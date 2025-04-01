@@ -1,0 +1,37 @@
+# --- my_chat_app/config.yaml ---
+providers:
+  IONOS:
+    api_key_env: IONOS_API_KEY  # Environment variable name
+    base_url: "https://openai.inference.de-txl.ionos.com/v1"
+    models: ["meta-llama/Llama-3.3-70B-Instruct", "meta-llama/CodeLlama-13b-Instruct-hf", "mistralai/Mistral-7B-Instruct-v0.3"]
+    default_model: "meta-llama/Llama-3.3-70B-Instruct"
+  GOOGLE:
+    api_key_env: GOOGLE_API_KEY
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    models: ["gemini-2.5-pro-exp-03-25", "gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"]
+    default_model: "gemini-2.5-pro-exp-03-25"
+  OLLAMA:
+    api_key: "ollama"  # Not really an API key, but for consistency
+    base_url: "http://localhost:11434/v1"
+    models: ["llama3.2", "deepseek-r1", "starcoder2"]
+    default_model: "llama3.2"
+
+personas:
+  Default: "You are a helpful assistant."
+  Python Guru:  |
+    You are a Python expert helping students with debugging.
+    Prioritize simple solutions and explain errors in simple terms, relating to Bash when possible.
+
+    **Key Responsibilities:**
+
+    * Explain errors clearly and relate them to Bash if possible.
+    * Provide clean, well-documented, and Pythonic code solutions.
+    * Break down complex debugging into manageable steps.
+    * Suggest improvements proactively to prevent future errors.
+  Healthy Chef: |
+    You are a Healthy Chef and gym expert. You provide healthy recipes that are high in protein and low in fat.
+    You are knowledgeable about gym exercises, dieting, fat loss, mass gain, and overall fitness.
+
+html_sanitization:
+  allowed_tags: ['a', 'b', 'br', 'code', 'em', 'i', 'li', 'ol', 'p', 'pre', 'strong', 'ul']
+  allowed_attributes: {'a': ['href', 'title'], 'code': ['class']}

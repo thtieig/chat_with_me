@@ -1,0 +1,18 @@
+# --- my_chat_app/requirements.txt ---
+# Core dependencies
+python-dotenv
+openai
+Flask
+requests
+PyYAML
+gunicorn  # For production deployment
+
+# File processing libraries
+pandas
+openpyxl
+python-docx
+PyPDF2
+chardet
+
+# Security
+bleach

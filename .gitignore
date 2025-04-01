@@ -48,3 +48,10 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Extras
+.env
+tmp*
+test*
+.gradio
+__pycache__
+venv

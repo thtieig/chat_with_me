@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat (Flask)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Optional: Add link to favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Chat</h1>
+
+        <div class="chat-area card">
+            <div id="chat-history">
+                <!-- Chat messages will be appended here -->
+                <div class="message bot">Welcome! Select your options and ask a question.</div>
+            </div>
+        </div>
+
+        <div class="input-area card">
+            <form id="chat-form">
+                <div class="settings">
+                    <div class="control-group">
+                        <label for="provider-select">Provider:</label>
+                        <select id="provider-select" name="provider">
+                            {% for provider in providers %}
+                                <option value="{{ provider }}" {% if provider == initial_provider %}selected{% endif %}>{{ provider }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="model-select">Model:</label>
+                        <select id="model-select" name="model">
+                            {% for model in initial_models %}
+                                <option value="{{ model }}" {% if model == initial_default_model %}selected{% endif %}>{{ model }}</option>
+                            {% endfor %}
+                         </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="persona-select">Persona:</label>
+                        <select id="persona-select" name="persona">
+                             {% for persona in personas %}
+                                <option value="{{ persona }}" {% if persona == 'Default' %}selected{% endif %}>{{ persona }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="message-input">
+                     <textarea id="message-input" name="message" placeholder="Type your message..." rows="3" required></textarea>
+                     <div class="file-input">
+                        <label for="file-input-field" class="file-label">Attach Files</label>
+                        <input type="file" id="file-input-field" name="files" multiple>
+                        <span id="file-names">No files selected</span>
+                     </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" id="send-button">Send</button>
+                    <button type="button" id="clear-button">Clear</button>
+                    <!-- Interrupt button needs more complex handling (AbortController) -->
+                    <!-- <button type="button" id="interrupt-button" disabled>Interrupt</button> -->
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Include JavaScript -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
