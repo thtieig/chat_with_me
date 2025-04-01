@@ -10,17 +10,38 @@ import llm_logic  # Assuming llm_logic.py is in the same directory or Python pat
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Needed for potential session usage, good practice
 
-# Load configuration from config.yaml
+# Default configurations
+dev_config = {
+    "application_mode": "development",
+    "flask_debug": True,
+    "log_chat_to_console": True,
+    "log_level": "DEBUG",
+    "host": "127.0.0.1",
+    "port": 5000
+}
+
+prod_config = {
+    "application_mode": "production",
+    "flask_debug": False,
+    "log_chat_to_console": False,
+    "log_level": "INFO",
+    "host": "0.0.0.0",
+    "port": 5000
+}
+
 def load_config():
     config_path = os.path.join(app.root_path, 'config.yaml')
     try:
         with open(config_path, 'r') as file:
-            return yaml.safe_load(file)
+            config = yaml.safe_load(file)
+            if config.get("application_mode") == "production":
+                return prod_config
+            else:
+                return dev_config
     except Exception as e:
-        print(f"Error loading config.yaml: {e}")
-        return {"log_chat_to_console": False, "log_level": "INFO"}
+        print(f"Error loading config.yaml: {e}. Defaulting to development mode.")
+        return dev_config
 
-# Global app configuration (separate from llm_logic.config)
 app_config = load_config()
 
 # Set up logging based on config
@@ -236,13 +257,8 @@ def chat_endpoint():
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    # For development, debug mode can be enabled here
-    # In production, set this to False
-    debug_mode = app_config.get('flask_debug', True)
-    
-    # Use host='0.0.0.0' to make accessible on the network
-    host = app_config.get('host', '0.0.0.0')
-    port = app_config.get('port', 5000)
-    
-    logger.info(f"Starting Flask app on {host}:{port} with debug={debug_mode}")
-    app.run(host=host, port=port, debug=debug_mode)
+    app.run(
+        host=app_config['host'],
+        port=app_config['port'],
+        debug=app_config['flask_debug']
+    )

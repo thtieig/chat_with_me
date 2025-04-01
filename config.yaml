@@ -1,11 +1,5 @@
-# Application configuration
-host: "0.0.0.0"  # Host to bind the Flask server
-port: 5000       # Port to run the Flask server
-flask_debug: true  # Enable Flask debug mode (for development only)
-
-# Logging configuration
-log_level: "DEBUG"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-log_chat_to_console: true  # Set to true to print chat content to console
+# Application mode - determines default settings
+application_mode: "development"  # Options: "development" or "production"
 
 # Other app settings 
 providers:
