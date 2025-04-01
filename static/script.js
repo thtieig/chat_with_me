@@ -1,4 +1,3 @@
-// --- my_chat_app/static/script.js ---
 // Get the chat form and its elements
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
@@ -16,6 +15,66 @@ let currentBotMessageDiv = null;
 let conversationHistory = [];
 let configData = null;
 let combinedFiles = []; // Holds File objects to be uploaded
+
+// --- Helper: Sanitize HTML ---
+// Configure DOMPurify slightly - allow target="_blank" for links if needed
+// DOMPurify.setConfig({ ADD_ATTR: ['target'] }); // Example config
+function sanitizeHTML(htmlString) {
+    // Use DOMPurify to sanitize HTML generated from Markdown
+    // Allow common formatting tags + code highlighting classes
+    return DOMPurify.sanitize(htmlString, {
+         USE_PROFILES: { html: true }, // Use standard HTML profile
+         ADD_TAGS: ['pre', 'code'], // Ensure pre/code are allowed
+         ADD_ATTR: ['class'] // Allow 'class' attribute for potential syntax highlighting later
+        });
+}
+
+// --- Helper: Enhance code blocks for Prism ---
+function enhanceCodeBlocks(element) {
+    // Find all code blocks within pre tags
+    const codeBlocks = element.querySelectorAll('pre > code');
+    
+    codeBlocks.forEach(codeBlock => {
+        // If there's no language class, try to detect from context or add a default
+        if (!codeBlock.className.includes('language-')) {
+            // Default to plaintext if no language specified
+            codeBlock.classList.add('language-plaintext');
+        }
+        
+        // Add a copy button to each code block
+        const preBlock = codeBlock.parentElement;
+        if (!preBlock.parentElement.classList.contains('code-block')) {
+            // Wrap the pre in a div for positioning the copy button
+            const wrapper = document.createElement('div');
+            wrapper.className = 'code-block';
+            preBlock.parentNode.insertBefore(wrapper, preBlock);
+            wrapper.appendChild(preBlock);
+            
+            // Add copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-button';
+            copyBtn.textContent = 'Copy';
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(codeBlock.textContent)
+                    .then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = 'Copy';
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy code: ', err);
+                    });
+            });
+            wrapper.appendChild(copyBtn);
+        }
+    });
+    
+    // Trigger Prism to highlight all code blocks
+    if (window.Prism) {
+        Prism.highlightAllUnder(element);
+    }
+}
 
 // --- Core Functions ---
 
@@ -50,7 +109,6 @@ function updateModelOptions() {
             modelSelect.appendChild(option);
         });
     } else {
-        // Handle case where no models are defined or provider info is missing
         const option = document.createElement('option');
         option.textContent = 'No models available';
         option.disabled = true;
@@ -59,79 +117,106 @@ function updateModelOptions() {
 }
 
 // Add a message bubble to the chat history UI
+// Content should be treated as *plain text* for user/error, and *Markdown* for bot
 function addMessage(role, content, isStreaming = false) {
     if (!chatHistory) return null;
 
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role); // e.g., 'message user', 'message bot', 'message error'
 
-    // Sanitize HTML content before inserting (important for bot responses)
-    // Basic sanitization (replace newline with <br>) is done here,
-    // more complex sanitization should happen server-side or use a robust library.
-    // For user messages, we generally display what they typed.
-    // For bot messages, we expect potentially formatted text.
-    messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+    let finalContent = '';
+    if (role === 'assistant') { // Parse and sanitize bot messages
+        const unsafeHtml = marked.parse(content); // Use marked.parse for bot content
+        finalContent = sanitizeHTML(unsafeHtml); // Sanitize the result
+        messageDiv.dataset.rawContent = content; // Store raw Markdown for streaming updates
+    } else { // For user and error messages, treat as plain text (escape HTML)
+        // Basic escaping: replace chars that have special meaning in HTML
+        const escapedContent = content
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        finalContent = escapedContent.replace(/\n/g, '<br>'); // Still allow line breaks
+    }
 
+    messageDiv.innerHTML = finalContent;
     chatHistory.appendChild(messageDiv);
-    // Scroll to the bottom
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to bottom
+    
+    // Apply syntax highlighting to code blocks
+    if (role === 'assistant') {
+        enhanceCodeBlocks(messageDiv);
+    }
 
     if (role === 'assistant' && isStreaming) {
-        // Keep track of the div being actively streamed into
         currentBotMessageDiv = messageDiv;
-        // Initialize raw content dataset property
-        currentBotMessageDiv.dataset.rawContent = '';
+        // rawContent dataset is already set above
     } else {
-        currentBotMessageDiv = null; // No longer streaming into this div
-        // Add non-streaming or non-assistant messages to the history array
-        if (role !== 'error') { // Don't store errors in the LLM history
+        currentBotMessageDiv = null;
+        if (role !== 'error') {
+            // Store the *original* unparsed content for history
             conversationHistory.push({ role, content });
         }
     }
-    return messageDiv; // Return the created element
+    return messageDiv;
 }
 
 // Append a chunk of text to the currently streaming bot message
 function appendStreamChunk(chunk) {
     if (currentBotMessageDiv) {
-        // Append raw chunk to dataset
-        currentBotMessageDiv.dataset.rawContent += chunk;
-        // Format for display (newlines, basic code blocks)
-        let formattedContent = currentBotMessageDiv.dataset.rawContent.replace(/\n/g, '<br>');
-        // Very basic markdown-like code block handling
-        formattedContent = formattedContent.replace(/```([\s\S]*?)```/gs, (match, p1) => `<pre><code>${p1.trim().replace(/<br>/g, '\n')}</code></pre>`);
-        formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
-        currentBotMessageDiv.innerHTML = formattedContent;
-        // Keep scrolled to bottom
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        // Append raw chunk to the stored raw content
+        let currentRawContent = currentBotMessageDiv.dataset.rawContent || '';
+        currentRawContent += chunk;
+        currentBotMessageDiv.dataset.rawContent = currentRawContent;
+
+        // Parse the *entire accumulated raw markdown* and sanitize
+        const unsafeHtml = marked.parse(currentRawContent);
+        const safeHtml = sanitizeHTML(unsafeHtml);
+
+        // Update the div's content with the latest formatted HTML
+        currentBotMessageDiv.innerHTML = safeHtml;
+        
+        // Apply syntax highlighting to code blocks
+        enhanceCodeBlocks(currentBotMessageDiv);
+        
+        chatHistory.scrollTop = chatHistory.scrollHeight; // Keep scrolled to bottom
     } else {
         // If streaming starts unexpectedly, create a new message div
         console.warn("Received stream chunk but no active bot message div. Creating new one.");
-        addMessage('assistant', chunk, true); // Start a new streaming message
-        if (currentBotMessageDiv) {
-             // Make sure dataset is initialized even in this edge case
-            currentBotMessageDiv.dataset.rawContent = chunk;
-        }
+        // Start a new streaming message, passing the first chunk as Markdown
+        addMessage('assistant', chunk, true);
+        // Note: addMessage already handles parsing, sanitizing, and setting rawContent
     }
 }
 
 // Finalize the bot message after streaming ends
 function finalizeBotMessage() {
     if (currentBotMessageDiv) {
-        const finalContent = currentBotMessageDiv.dataset.rawContent || currentBotMessageDiv.innerHTML; // Get the complete raw text
+        // Get the final raw Markdown content stored in the dataset
+        const finalRawContent = currentBotMessageDiv.dataset.rawContent || ''; // Fallback just in case
 
-        // Find the placeholder "..." message in history and update it
+        // Find the placeholder "..." message in the internal history and update it
+        // with the final *raw* Markdown content.
         const lastMsgIndex = conversationHistory.length - 1;
         if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant' && conversationHistory[lastMsgIndex].content === '...') {
-            conversationHistory[lastMsgIndex].content = finalContent; // Update the history
+            conversationHistory[lastMsgIndex].content = finalRawContent; // Update history with raw Markdown
+            console.log("Finalized bot message in history.");
         } else {
             // Should not happen if placeholder was added correctly, but handle defensively
-            conversationHistory.push({ role: 'assistant', content: finalContent });
+            console.warn("Could not find placeholder '...' in history to finalize message.");
+            // Add the final raw content as a new message if placeholder wasn't found
+            conversationHistory.push({ role: 'assistant', content: finalRawContent });
         }
 
-        // Clean up dataset attribute
+        // Clean up dataset attribute (optional, but good practice)
         delete currentBotMessageDiv.dataset.rawContent;
-        currentBotMessageDiv = null; // Mark streaming as finished
+        currentBotMessageDiv = null; // Mark streaming as finished for this div
+        
+        // Final application of syntax highlighting in case any code blocks were incompletely processed
+        enhanceCodeBlocks(chatHistory.lastElementChild);
+    } else {
+        console.log("Finalize called but no active bot message div.");
     }
 }
 
@@ -144,45 +229,58 @@ async function handleFormSubmit(event) {
     const persona = personaSelect.value;
     const filesToUpload = combinedFiles; // Get currently staged files
 
-    if (!message && filesToUpload.length === 0) return; // Need message or files
+    // Allow submitting *only* files without a message
+    if (!message && filesToUpload.length === 0) {
+        // Optionally, provide feedback to the user
+        // addMessage('error', 'Please type a message or add files to send.');
+        return; // Need message or files
+    }
     if (!model) {
         addMessage('error', 'Please select a model.');
         return;
     }
 
     // Display user message (potentially noting attached files)
+    // User message is treated as plain text, so use addMessage directly
     let userDisplayMessage = message || "(Sending attached files)"; // Display message or indicator
     if (filesToUpload.length > 0) {
         const fileText = filesToUpload.length === 1 ? 'file' : 'files';
-        userDisplayMessage += `<br><small><i>(${filesToUpload.length} ${fileText} attached)</i></small>`;
+        // Display file count as plain text within the user message bubble
+        // Note: addMessage will escape this HTML, so use line break entity
+        userDisplayMessage += `\n(Attached ${filesToUpload.length} ${fileText})`;
     }
-    addMessage('user', userDisplayMessage);
-    if (message) { // Only add the text message to history if it exists
+    addMessage('user', userDisplayMessage); // addMessage handles plain text escaping
+
+    // Only add the *text* message to the conversation history if it exists
+    if (message) {
         conversationHistory.push({ role: 'user', content: message });
     }
     messageInput.value = ''; // Clear input field
 
     setFormDisabled(true); // Disable form controls during request
-    addMessage('assistant', '...', true); // Add placeholder for streaming response
-    conversationHistory.push({ role: 'assistant', content: '...' }); // Add placeholder to history
+    // Add placeholder for streaming response (handled by addMessage)
+    // The content '...' will be replaced by appendStreamChunk/finalizeBotMessage
+    addMessage('assistant', '...', true);
+    // Add placeholder to *internal* history (will be updated in finalizeBotMessage)
+    conversationHistory.push({ role: 'assistant', content: '...' });
 
     // Prepare data for the backend
     const formData = new FormData();
-    formData.append('message', message); // Send the text message
+    formData.append('message', message); // Send the raw text message
     formData.append('provider', provider);
     formData.append('model', model);
     formData.append('persona', persona);
 
     // Send history *before* the current user message and the placeholder "..."
+    // Ensure history being sent doesn't contain the live '...' placeholder
     const historyForAPI = conversationHistory.slice(0, -2);
     formData.append('history', JSON.stringify(historyForAPI));
 
     // Append files if any
     if (filesToUpload.length > 0) {
         filesToUpload.forEach(file => {
-            // Use webkitRelativePath if available (for folders), otherwise just name
             const fileName = file.webkitRelativePath || file.name;
-            formData.append('files', file, fileName); // Append each file
+            formData.append('files', file, fileName);
             console.log(`Appending file to FormData: ${fileName} (${file.size} bytes)`);
         });
     }
@@ -193,21 +291,27 @@ async function handleFormSubmit(event) {
 
     // --- Make the API call using Server-Sent Events (SSE) ---
     try {
-        // Use fetch API to connect to the /chat endpoint
         const response = await fetch('/chat', {
             method: 'POST',
             body: formData // Send the form data
         });
 
-        // Check if the response is OK and is an event stream
         if (!response.ok) {
             let errorMsg = `HTTP error! Status: ${response.status}`;
-            try {
-                const errorData = await response.json(); // Try to get error details from JSON response
-                errorMsg = errorData.message || errorMsg;
+            try { // Try to parse potential JSON error from server
+                const errorData = await response.json();
+                // Check if the parsed data has a 'message' field in the expected event format
+                if (errorData && errorData.message) {
+                    errorMsg = errorData.message; // Use server-provided message
+                } else {
+                     // If response isn't the expected JSON error, maybe it's plain text
+                     const textError = await response.text(); // Re-read as text
+                     if (textError) errorMsg = textError;
+                }
             } catch (e) { /* Ignore if response is not JSON */ }
-            throw new Error(errorMsg);
+            throw new Error(errorMsg); // Throw the best error message we found
         }
+
 
         if (!response.headers.get("content-type")?.includes("text/event-stream")) {
             throw new Error("Server did not respond with an event stream.");
@@ -218,9 +322,10 @@ async function handleFormSubmit(event) {
         const decoder = new TextDecoder();
         let buffer = ''; // Buffer for incomplete messages
 
-        if (currentBotMessageDiv) { // Clear the placeholder "..."
-            currentBotMessageDiv.innerHTML = '';
-            currentBotMessageDiv.dataset.rawContent = '';
+        // Clear the visual placeholder "..." before appending chunks
+        if (currentBotMessageDiv) {
+            currentBotMessageDiv.innerHTML = ''; // Clear the initial '...'
+            // Don't reset rawContent here, appendStreamChunk needs it
         }
 
         while (true) {
@@ -235,46 +340,76 @@ async function handleFormSubmit(event) {
             buffer = lines.pop(); // Keep the potentially incomplete last line in the buffer
 
             for (const line of lines) {
-                if (line.startsWith('event: ')) {
-                    const eventType = line.substring('event: '.length).trim();
-                    // Handle different event types if needed (e.g., 'chunk', 'end', 'error')
-                    console.log("SSE event:", eventType);
+                 if (!line.trim()) continue; // Skip empty lines
 
-                } else if (line.startsWith('data: ')) {
-                    const dataJson = line.substring('data: '.length).trim();
-                    try {
-                        const data = JSON.parse(dataJson);
-                        if (data.content) {
-                            // It's a content chunk, append it
-                            appendStreamChunk(data.content);
-                        } else if (data.message) {
-                            // Could be an end message or an error message from the stream
-                            console.log("SSE data message:", data.message);
-                            if (line.includes('"event": "error"')) { // Check if it's an error event
-                                throw new Error(data.message); // Throw error to be caught below
-                            }
-                            // If it's an 'end' event message, we just log it, loop will exit on 'done'.
-                        }
-                    } catch (e) {
-                        console.warn("Failed to parse SSE data JSON:", dataJson, e);
-                        // Handle JSON parsing error, maybe display a generic error message
-                        addMessage('error', 'Received malformed data from server.');
-                    }
-                }
-            }
-            // Check if the stream was explicitly cancelled (e.g., by an error)
+                 let eventType = 'message'; // Default event type
+                 let dataContent = line;
+
+                 if (line.startsWith('event:')) {
+                    eventType = line.substring('event:'.length).trim();
+                    // We expect data on the next line for custom events
+                    continue; // Don't process the event line itself as data
+                 } else if (line.startsWith('data:')) {
+                    dataContent = line.substring('data:'.length).trim();
+                 } else {
+                    // If line doesn't start with event: or data:, treat as default message data
+                    // This handles simple streams that don't use the full SSE format strictly
+                    console.debug("Received line without 'data:' prefix, treating as data:", line);
+                    dataContent = line;
+                 }
+
+                 // Now process based on eventType determined from previous line or default
+                 if (eventType === 'chunk' || eventType === 'message') { // Handle 'chunk' or default 'message' events
+                     try {
+                         const data = JSON.parse(dataContent);
+                         if (data.content) {
+                             appendStreamChunk(data.content); // Append the text chunk
+                         } else {
+                            console.warn("Received chunk/message event without 'content':", data);
+                         }
+                     } catch (e) {
+                         console.error("Failed to parse SSE data JSON:", dataContent, e);
+                         // Maybe the raw line *was* the content if not JSON?
+                         // Decide if you want to append non-JSON data:
+                         // appendStreamChunk(dataContent); // Uncomment cautiously
+                     }
+                 } else if (eventType === 'error') {
+                     console.error("SSE Error Event Received:", dataContent);
+                     try {
+                         const errorData = JSON.parse(dataContent);
+                         addMessage('error', errorData.message || dataContent);
+                     } catch (e) {
+                         addMessage('error', dataContent); // Show raw error if not JSON
+                     }
+                     finalizeBotMessage(); // Finalize before cancelling
+                     if (reader) reader.cancel("SSE error received"); // Attempt to cancel the stream reader
+                     break; // Exit processing loop on error
+                 } else if (eventType === 'end') {
+                     console.log("SSE End Event Received:", dataContent);
+                     // The 'done' condition of the reader loop handles stream end,
+                     // but this event confirms it from the server side.
+                     // No action needed here usually, finalize happens after the loop.
+                 } else {
+                     console.log(`Received unhandled SSE event type '${eventType}':`, dataContent);
+                 }
+
+            } // end for loop over lines
+
+            // Check if the stream was cancelled (e.g., by an error event)
             if (reader.cancelled) {
                 console.log("SSE reader cancelled.");
-                break;
+                break; // Exit the while loop if cancelled
             }
         } // end while loop
 
-        finalizeBotMessage(); // Finalize the complete message in history
+        finalizeBotMessage(); // Finalize the complete message in history after the stream ends naturally
 
     } catch (error) {
         console.error("Chat request failed:", error);
+        // Display the error in the chat interface
         addMessage('error', `Error: ${error.message}`);
-        finalizeBotMessage(); // Ensure any partial message is handled/finalized
+        // Ensure any partial bot message is finalized/cleaned up even on error
+        finalizeBotMessage();
     } finally {
         setFormDisabled(false); // Re-enable form controls
     }
@@ -287,7 +422,8 @@ function clearChat() {
     combinedFiles = []; // Clear staged files
     if (attachmentNamesSpan) attachmentNamesSpan.textContent = 'No files or folders added'; // Reset file text
     currentBotMessageDiv = null; // Reset streaming state
-    addMessage('bot', 'Conversation cleared.'); // Add confirmation message
+    // Add confirmation message (as plain text)
+    addMessage('bot', 'Conversation cleared.');
     console.log("Chat cleared.");
 }
 
@@ -341,51 +477,42 @@ function setFormDisabled(disabled) {
 // Recursive function to scan directory entries (files and subfolders)
 async function scanDirectoryEntry(entry) {
     if (entry.isFile) {
-        // If it's a file, get the File object
         return new Promise((resolve, reject) => {
             entry.file(file => resolve([file]), err => reject(err));
         });
     } else if (entry.isDirectory) {
-        // If it's a directory, read its entries
         let reader = entry.createReader();
         let allEntries = [];
         return new Promise((resolve, reject) => {
             const readEntries = async () => {
                 reader.readEntries(async (entries) => {
                     if (entries.length > 0) {
-                        // Process batch of entries
                         const batchPromises = [];
                         for (const subEntry of entries) {
                             batchPromises.push(scanDirectoryEntry(subEntry)); // Recurse
                         }
                         try {
-                            // Wait for all entries in this batch to be processed
-                            const filesFromBatch = await Promise.all(batchPromises);
-                            // Flatten the results (as scanDirectoryEntry returns arrays)
-                            filesFromBatch.forEach(fileArray => allEntries.push(...fileArray));
-                            // Read the next batch
-                            readEntries();
+                            const fileArrays = await Promise.all(batchPromises);
+                            fileArrays.forEach(fileArray => allEntries.push(...fileArray));
+                            readEntries(); // Read the next batch
                         } catch (err) {
                             reject(err); // Propagate errors
                         }
                     } else {
-                        // No more entries in this directory
-                        resolve(allEntries);
+                        resolve(allEntries); // No more entries
                     }
                 }, err => reject(err)); // Handle readEntries error
             };
             readEntries(); // Start reading
         });
     }
-    // Ignore other entry types (like symlinks)
-    return [];
+    return []; // Ignore other entry types
 }
 
 // Add newly dropped/selected files to the combined list, avoiding duplicates
 function addNewFiles(newFiles) {
     const uniqueNewFiles = newFiles.filter(newFile =>
         !combinedFiles.some(existingFile =>
-            // Basic duplicate check based on name, size, last modified, and relative path
             existingFile.name === newFile.name &&
             existingFile.size === newFile.size &&
             existingFile.lastModified === newFile.lastModified &&
@@ -415,118 +542,114 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
     clearButton.addEventListener('click', clearChat);
 
     // --- Drag and Drop Event Listeners ---
-
-    // Fired when an item is dragged INTO the drop zone
     dropZone.addEventListener('dragenter', (e) => {
-        e.preventDefault(); // Necessary to allow drop
-        e.stopPropagation();
-        dropZone.classList.add('dragover'); // Add visual feedback
+        e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover');
     });
-
-    // Fired continuously while an item is dragged OVER the drop zone
     dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Necessary to allow drop
-        e.stopPropagation();
-        // You could add other effects here if needed
+        e.preventDefault(); e.stopPropagation(); /* Keep class */
     });
-
-    // Fired when an item is dragged OUT of the drop zone
     dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Only remove the visual feedback if the drag leaves the dropzone entirely,
-        // not just moving over a child element.
-        if (!dropZone.contains(e.relatedTarget)) {
-            dropZone.classList.remove('dragover');
-        }
+        e.preventDefault(); e.stopPropagation();
+        if (!dropZone.contains(e.relatedTarget)) { dropZone.classList.remove('dragover'); }
     });
-
-    // *** Fired when an item is DROPPED onto the drop zone ***
     dropZone.addEventListener('drop', async (e) => {
         console.log("Drop event fired!");
-        e.preventDefault(); // *** CRITICAL: Prevent browser default action (opening file) ***
-        e.stopPropagation();
-        dropZone.classList.remove('dragover'); // Remove visual feedback
-        attachmentNamesSpan.textContent = 'Processing dropped items...'; // Update status
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dragover');
+        attachmentNamesSpan.textContent = 'Processing dropped items...';
 
         const items = e.dataTransfer.items;
-        const files = e.dataTransfer.files;
+        const files = e.dataTransfer.files; // Fallback
         const droppedFiles = [];
         const promises = [];
 
-        // Prefer DataTransferItems API for folder support (Chrome/Edge/etc.)
         if (items && items.length > 0 && items[0].webkitGetAsEntry) {
             console.log("Processing dropped items using webkitGetAsEntry API.");
             for (let i = 0; i < items.length; i++) {
                 const entry = items[i].webkitGetAsEntry();
-                if (entry) {
-                    promises.push(scanDirectoryEntry(entry)); // Scan file or directory
-                } else {
-                    console.warn("Could not get entry for item:", items[i]);
-                }
+                if (entry) { promises.push(scanDirectoryEntry(entry)); }
             }
-
             try {
-                const fileArrays = await Promise.all(promises); // Wait for all scans
-                fileArrays.forEach(fileArray => droppedFiles.push(...fileArray)); // Collect all files
-                console.log(`Processed ${droppedFiles.length} files from dropped items.`);
-                addNewFiles(droppedFiles); // Add processed files to our list
-                updateAttachmentNames(); // Update UI
+                const fileArrays = await Promise.all(promises);
+                fileArrays.forEach(fileArray => droppedFiles.push(...fileArray));
+                console.log(`Processed ${droppedFiles.length} files from drop.`);
+                addNewFiles(droppedFiles);
+                updateAttachmentNames();
             } catch (error) {
                 console.error('Error processing dropped items:', error);
-                attachmentNamesSpan.textContent = 'Error processing items.';
                 addMessage('error', `Error processing dropped items: ${error.message}`);
-                updateAttachmentNames(); // Show previous file count or error
+                updateAttachmentNames(); // Revert text or show previous count
             }
-        }
-        // Fallback to DataTransfer.files API (works for files, not folders)
-        else if (files && files.length > 0) {
-            console.log("Processing dropped files using dataTransfer.files API.");
-            addNewFiles(Array.from(files)); // Add files directly
-            updateAttachmentNames(); // Update UI
+        } else if (files && files.length > 0) {
+            console.log("Processing dropped files using fallback dataTransfer.files API.");
+            addNewFiles(Array.from(files));
+            updateAttachmentNames();
         } else {
             console.log("No items or files found in drop event.");
-            updateAttachmentNames(); // Update UI (likely back to 'No files')
+            updateAttachmentNames(); // Revert text or show previous count
         }
     });
 
     // --- Click Listener for File Selection ---
     dropZone.addEventListener('click', () => {
-        // Don't allow clicking if the form is disabled
-        if (sendButton.disabled) return;
-
-        // Create a hidden file input element
+        if (sendButton.disabled) return; // Don't allow click when disabled
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.multiple = true; // Allow selecting multiple files
-        // Note: We cannot reliably trigger a *folder* selection dialog programmatically.
-        // fileInput.webkitdirectory = true; // This attribute works on the element, but not via click()
-
-        // Add event listener for when files are selected
+        fileInput.multiple = true;
+        // fileInput.webkitdirectory = true; // Doesn't work reliably with click()
         fileInput.onchange = (event) => {
             if (event.target.files.length > 0) {
                 console.log(`Files selected via click: ${event.target.files.length}`);
-                addNewFiles(Array.from(event.target.files)); // Add the selected files
-                updateAttachmentNames(); // Update UI
+                addNewFiles(Array.from(event.target.files));
+                updateAttachmentNames();
             }
         };
-
-        fileInput.click(); // Programmatically click the hidden input
+        fileInput.click();
     });
 
     // --- Initial Load ---
-    fetchConfig(); // Load configuration from server on page load
+    fetchConfig();
 
 } else {
-    // Critical elements are missing, log an error and inform the user
     console.error("Initialization failed: One or more required HTML elements not found.");
     const errorDiv = document.createElement('div');
-    errorDiv.className = 'message error'; // Use existing error styling
-    errorDiv.textContent = 'Error: Failed to initialize chat interface elements. Please check the HTML structure or report the issue.';
-    if (chatHistory) {
-        chatHistory.appendChild(errorDiv);
-    } else {
-        // Fallback if even chatHistory is missing
-        alert('Error: Failed to initialize chat interface elements.');
+    errorDiv.className = 'message error';
+    errorDiv.textContent = 'Error: Failed to initialize chat interface elements.';
+    if (chatHistory) { chatHistory.appendChild(errorDiv); } else { alert(errorDiv.textContent); }
+}
+
+// Remove the placeholder text from the code block
+if (document.getElementById('code-block-1')) {
+    const codeBlock = document.getElementById('code-block-1');
+    const codeElement = codeBlock.querySelector('code');
+    if (codeElement) {
+        codeElement.textContent = '';
     }
 }
+
+// Add language components for common programming languages
+document.addEventListener('DOMContentLoaded', () => {
+    // Add custom handling for code blocks that might not have language classes
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if the added element contains code blocks
+                        if (node.classList.contains('bot') || node.querySelector('.bot')) {
+                            const botMessage = node.classList.contains('bot') ? node : node.querySelector('.bot');
+                            if (botMessage) {
+                                enhanceCodeBlocks(botMessage);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    observer.observe(document.getElementById('chat-history'), {
+        childList: true,
+        subtree: true
+    });
+});
