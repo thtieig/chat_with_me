@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Chat (Flask)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Optional: Add link to favicon -->
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 </head>
 <body>
@@ -14,8 +13,7 @@
 
         <div class="chat-area card">
             <div id="chat-history">
-                <!-- Chat messages will be appended here -->
-                <div class="message bot">Welcome! Select your options and ask a question.</div>
+                <div class="message bot">Welcome! Select your options and ask a question. You can upload files and/or a directory.</div>
             </div>
         </div>
 
@@ -36,12 +34,12 @@
                             {% for model in initial_models %}
                                 <option value="{{ model }}" {% if model == initial_default_model %}selected{% endif %}>{{ model }}</option>
                             {% endfor %}
-                         </select>
+                        </select>
                     </div>
                     <div class="control-group">
                         <label for="persona-select">Persona:</label>
                         <select id="persona-select" name="persona">
-                             {% for persona in personas %}
+                            {% for persona in personas %}
                                 <option value="{{ persona }}" {% if persona == 'Default' %}selected{% endif %}>{{ persona }}</option>
                             {% endfor %}
                         </select>
@@ -49,25 +47,23 @@
                 </div>
 
                 <div class="message-input">
-                     <textarea id="message-input" name="message" placeholder="Type your message..." rows="3" required></textarea>
-                     <div class="file-input">
-                        <label for="file-input-field" class="file-label">Attach Files</label>
-                        <input type="file" id="file-input-field" name="files" multiple>
-                        <span id="file-names">No files selected</span>
-                     </div>
+                    <textarea id="message-input" name="message" placeholder="Type your message..." rows="3" required></textarea>
+                    <div class="attachment-area">
+                        <div id="drop-zone">
+                            <p>Drag and drop files or a directory here, or click to select</p>
+                            <span id="attachment-names">No files or folders added</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="button-group">
                     <button type="submit" id="send-button">Send</button>
                     <button type="button" id="clear-button">Clear</button>
-                    <!-- Interrupt button needs more complex handling (AbortController) -->
-                    <!-- <button type="button" id="interrupt-button" disabled>Interrupt</button> -->
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Include JavaScript -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ import os
 import sys
 from typing import List, Dict, Generator, Union
 from dotenv import load_dotenv
-from openai import OpenAI, APIError # Import APIError for better handling
+from openai import OpenAI, APIError
 import pandas as pd
 import docx
 import PyPDF2
@@ -15,316 +15,196 @@ import chardet
 import logging
 import bleach
 import yaml
-import io # Needed for processing file streams
-from werkzeug.datastructures import FileStorage # Flask's file object type
+import io # Keep io for type hints, even if not used in placeholder process_files
 
-# Set up logging (same as before)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Load environment variables (can be done here or in app.py)
 load_dotenv(override=True)
 
-# --- Configuration Loading ---
+# Configure basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def load_config(config_file="config.yaml"):
     """Loads configuration from a YAML file."""
     try:
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
-            # Basic validation
             if not config_data or 'providers' not in config_data or 'personas' not in config_data:
                 raise ValueError("Invalid config structure. Missing 'providers' or 'personas'.")
+            logging.info(f"Configuration loaded successfully from {config_file}")
             return config_data
     except FileNotFoundError:
         logging.error(f"Configuration file not found: {config_file}")
-        sys.exit(1) # Exit if config is essential
+        sys.exit(1) # Exit if config is essential and missing
     except (yaml.YAMLError, ValueError) as e:
-        logging.error(f"Error parsing configuration file: {e}")
-        sys.exit(1) # Exit if config is essential
+        logging.error(f"Error parsing configuration file '{config_file}': {e}")
+        sys.exit(1) # Exit on bad config
 
-# Load config globally or pass it around. Global for simplicity here.
-# Consider dependency injection for larger apps.
-try:
-    config = load_config()
-except SystemExit:
-    config = None # Handle cases where app might run without exiting (e.g., testing)
+config = load_config()
 
 # --- Client Configuration ---
+
 def configure_ionos_client(provider_config):
-    """Configures the IONOS client."""
-    api_key = os.getenv(provider_config['api_key_env'])
+    """Configures and returns an OpenAI client for IONOS."""
+    api_key_env = provider_config.get('api_key_env')
+    api_key = os.getenv(api_key_env) if api_key_env else None
+    base_url = provider_config.get('base_url')
     if not api_key:
-        raise ValueError("IONOS_API_KEY not found in environment variables.")
-    return OpenAI(api_key=api_key, base_url=provider_config['base_url'])
+        raise ValueError(f"API key environment variable '{api_key_env}' not found for IONOS.")
+    if not base_url:
+         raise ValueError("Base URL not configured for IONOS.")
+    logging.info(f"Configuring IONOS client with base URL: {base_url}")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 def configure_google_client(provider_config):
-    """Configures the Google client."""
-    api_key = os.getenv(provider_config['api_key_env'])
+    """Configures and returns an OpenAI client for Google (OpenAI-compatible endpoint)."""
+    api_key_env = provider_config.get('api_key_env')
+    api_key = os.getenv(api_key_env) if api_key_env else None
+    base_url = provider_config.get('base_url')
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY not found in environment variables.")
-    return OpenAI(api_key=api_key, base_url=provider_config['base_url'])
+        raise ValueError(f"API key environment variable '{api_key_env}' not found for Google.")
+    if not base_url:
+         raise ValueError("Base URL not configured for Google.")
+    logging.info(f"Configuring Google client (OpenAI endpoint) with base URL: {base_url}")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 def configure_ollama_client(provider_config):
-    """Configures the Ollama client."""
-    # Allow overriding base_url via env var for flexibility
-    base_url = os.getenv("OLLAMA_BASE_URL", provider_config.get('base_url', 'http://localhost:11434/v1'))
-    if not base_url:
-         raise ValueError("Ollama base URL not configured in config.yaml or OLLAMA_BASE_URL env var.")
-    return OpenAI(base_url=base_url, api_key=provider_config.get('api_key', 'ollama'))
+    """Configures and returns an OpenAI client for Ollama."""
+    # Use OLLAMA_BASE_URL from .env first, then config.yaml, then default
+    default_ollama_url = 'http://localhost:11434/v1'
+    base_url = os.getenv("OLLAMA_BASE_URL", provider_config.get('base_url', default_ollama_url))
+    api_key = provider_config.get('api_key', 'ollama') # Default key for Ollama often 'ollama'
 
-# --- Persona Retrieval ---
+    if not base_url:
+        # This case should ideally not be hit due to defaults, but added for safety
+        logging.warning(f"Ollama base URL not explicitly configured, using default: {default_ollama_url}")
+        base_url = default_ollama_url
+
+    logging.info(f"Configuring Ollama client with base URL: {base_url}")
+    # Ollama doesn't typically require a real API key when accessed locally
+    return OpenAI(base_url=base_url, api_key=api_key)
+
+# --- Persona and Sanitization ---
+
 def get_persona_message(persona_name: str, config_data: dict) -> str:
-    """Retrieves the system message for a given persona."""
+    """Retrieves the system prompt for a given persona name from config."""
     if not config_data or 'personas' not in config_data:
-        logging.warning("Config data missing or invalid for personas.")
-        return "You are a helpful assistant." # Safe default
+        logging.warning("Personas configuration is missing or invalid. Using default.")
+        return "You are a helpful assistant."
 
     persona_messages = config_data.get('personas', {})
-    default_persona = next(iter(persona_messages.keys()), "Default") # Get first persona as default
-    fallback_message = persona_messages.get(default_persona, "You are a helpful assistant.")
+    # Find the first persona listed as the default if 'Default' doesn't exist
+    default_persona_name = next(iter(persona_messages.keys()), None) if persona_messages else None
+    default_message = "You are a helpful assistant."
+    if default_persona_name:
+        default_message = persona_messages.get(default_persona_name, default_message)
 
-    return persona_messages.get(persona_name, fallback_message)
+    # Get the message for the requested persona, fall back to 'Default', then the first one, then the hardcoded default
+    message = persona_messages.get(persona_name, persona_messages.get('Default', default_message))
+    logging.info(f"Using persona '{persona_name}': {message[:80]}...") # Log snippet
+    return message
 
-# --- File Processing (Adapted for Flask's FileStorage) ---
 def detect_encoding(file_data: bytes) -> str:
-    """Detect the encoding of the file data."""
+    """Detects the encoding of file data using chardet."""
     result = chardet.detect(file_data)
-    return result['encoding'] if result['encoding'] else 'utf-8'
+    encoding = result['encoding'] if result['encoding'] else 'utf-8'
+    logging.debug(f"Detected encoding: {encoding} with confidence {result['confidence']}")
+    return encoding
 
 def sanitize_html(html_content: str) -> str:
-    """Sanitizes HTML content to prevent XSS attacks."""
+    """Sanitizes HTML content based on settings in config.yaml."""
     if not config or 'html_sanitization' not in config:
-         logging.warning("HTML sanitization config not found. Skipping sanitization.")
-         return html_content # Or apply default strict rules
+        logging.warning("HTML sanitization config not found. Returning content unsanitized.")
+        return html_content # Return original if no config
 
     settings = config.get('html_sanitization', {})
     allowed_tags = settings.get('allowed_tags', [])
     allowed_attributes = settings.get('allowed_attributes', {})
+    logging.debug(f"Sanitizing HTML with tags: {allowed_tags}, attributes: {allowed_attributes.keys()}")
+    # strip=True removes disallowed tags entirely
+    # strip_comments=True is default and good practice
     return bleach.clean(html_content, tags=allowed_tags, attributes=allowed_attributes, strip=True)
 
-def process_file(file: FileStorage) -> str:
-    """Process different file types (from Flask FileStorage) and extract content."""
-    if not file or not file.filename:
-        return ""
+# --- File Processing (Placeholders - Needs Implementation) ---
 
-    filename = file.filename
-    file_extension = os.path.splitext(filename)[1].lower()
-    logging.info(f"Processing file: {filename} (type: {file_extension})")
-
-    content = f"--- Start of File: {filename} ---\n\n"
-    file_stream = file.stream # Get the file-like object
-
+def process_text_file(file_stream: io.BytesIO, filename: str) -> str:
+    """Placeholder: Processes a text-based file."""
+    logging.info(f"Processing text file (placeholder): {filename}")
     try:
-        if file_extension in ['.txt', '.py', '.js', '.html', '.css', '.md', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.xml', '.json']:
-            file_bytes = file_stream.read()
-            encoding = detect_encoding(file_bytes[:1024]) # Check first KB
-            try:
-                text_content = file_bytes.decode(encoding)
-                if file_extension == '.json':
-                    try:
-                        parsed_json = json.loads(text_content)
-                        formatted_json = json.dumps(parsed_json, indent=2)
-                        content += f"File type: JSON\n\n{formatted_json}"
-                    except json.JSONDecodeError as json_e:
-                        logging.warning(f"Could not parse JSON, treating as text: {json_e}")
-                        content += f"File type: {file_extension[1:].upper()} (could not parse as JSON)\n\n{text_content}"
-                elif file_extension == '.xml':
-                     content += f"File type: XML\n\n{text_content}"
-                else:
-                     content += f"File type: {file_extension[1:].upper()} file\n\n{text_content}"
-            except UnicodeDecodeError as decode_e:
-                 logging.error(f"Error decoding file {filename} with detected encoding {encoding}: {decode_e}")
-                 content += f"File type: {file_extension[1:].upper()} file\n\nError: Could not decode file content. It might be binary or use an unexpected encoding."
-
-        elif file_extension == '.docx':
-            try:
-                doc = docx.Document(io.BytesIO(file_stream.read()))
-                paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
-                tables_content = []
-                for table in doc.tables:
-                    table_data = []
-                    for row in table.rows:
-                        row_data = [cell.text for cell in row.cells]
-                        table_data.append(" | ".join(row_data))
-                    tables_content.append("\n".join(table_data))
-                content += "File type: Word Document\n\n"
-                content += "PARAGRAPHS:\n" + "\n".join(paragraphs)
-                if tables_content:
-                    content += "\n\nTABLES:\n" + "\n\n".join(tables_content)
-            except Exception as e:
-                logging.error(f"Error processing DOCX file {filename}: {str(e)}", exc_info=True)
-                content += f"File type: Word Document\n\nError processing content: {str(e)}"
-
-        elif file_extension == '.pdf':
-            try:
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_stream.read()))
-                pdf_text = '\n\n'.join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
-                content += f"File type: PDF Document\n\n{pdf_text}"
-            except Exception as e:
-                logging.error(f"Error processing PDF file {filename}: {str(e)}", exc_info=True)
-                content += f"File type: PDF Document\n\nError processing content: {str(e)}"
-
-        elif file_extension == '.csv':
-            try:
-                file_bytes = file_stream.read()
-                encoding = detect_encoding(file_bytes[:1024])
-                try:
-                    csv_content = file_bytes.decode(encoding)
-                    # Use io.StringIO to treat the string as a file for csv.reader
-                    csv_file_like = io.StringIO(csv_content)
-                    csv_reader = csv.reader(csv_file_like)
-                    # Sniff dialect just in case
-                    try:
-                        dialect = csv.Sniffer().sniff(csv_content[:1024])
-                        csv_file_like.seek(0) # Reset position after sniffing
-                        csv_reader = csv.reader(csv_file_like, dialect)
-                    except csv.Error:
-                         logging.warning(f"Could not sniff CSV dialect for {filename}, using default.")
-                         csv_file_like.seek(0) # Reset position
-
-                    rows = list(csv_reader)
-                    # Simple heuristic for header
-                    header = ", ".join(rows[0]) if rows else "N/A"
-                    num_rows = len(rows) -1 if rows else 0
-                    preview = '\n'.join([','.join(row) for row in rows[:10]]) # Preview first 10 rows
-                    content += f"File type: CSV\nHeader: {header}\nRows: {num_rows}\n\nPreview:\n{preview}"
-                    if len(rows) > 10:
-                        content += "\n..."
-                except UnicodeDecodeError as decode_e:
-                    logging.error(f"Error decoding CSV file {filename} with detected encoding {encoding}: {decode_e}")
-                    content += f"File type: CSV\n\nError: Could not decode file content."
-            except Exception as e:
-                logging.error(f"Error processing CSV file {filename}: {str(e)}", exc_info=True)
-                content += f"File type: CSV\n\nError processing content: {str(e)}"
-
-        elif file_extension in ['.xlsx', '.xls']:
-            try:
-                # Read the entire stream into BytesIO for pandas/openpyxl
-                file_bytes = io.BytesIO(file_stream.read())
-                # Try reading with pandas first for a quick overview
-                try:
-                    df = pd.read_excel(file_bytes, sheet_name=None) # Read all sheets
-                    content += f"File type: Excel Spreadsheet ({len(df)} sheet(s))\n\n"
-                    for sheet_name, sheet_df in df.items():
-                        content += f"--- Sheet: {sheet_name} ---\n"
-                        content += f"{sheet_df.to_string(index=False, max_rows=10)}\n"
-                        if len(sheet_df) > 10:
-                            content += "...\n"
-                        content += "\n"
-
-                except Exception as pd_e:
-                     logging.warning(f"Pandas could not read {filename}, trying openpyxl directly: {pd_e}")
-                     # Reset stream position if pandas failed
-                     file_bytes.seek(0)
-                     try:
-                        workbook = load_workbook(file_bytes, read_only=True, data_only=True)
-                        content += f"File type: Excel Spreadsheet ({len(workbook.sheetnames)} sheet(s))\n\n"
-                        for sheet_name in workbook.sheetnames:
-                            content += f"--- Sheet: {sheet_name} ---\n"
-                            sheet = workbook[sheet_name]
-                            # Extract first few rows as preview
-                            rows_preview = []
-                            for row_idx, row in enumerate(sheet.iter_rows(max_row=10)):
-                                rows_preview.append([str(cell.value) if cell.value is not None else "" for cell in row])
-                            content += "\n".join([" | ".join(r) for r in rows_preview])
-                            if sheet.max_row > 10:
-                                content += "\n..."
-                            content += "\n\n"
-                     except Exception as oxl_e:
-                         logging.error(f"Error processing Excel file {filename} with openpyxl: {str(oxl_e)}", exc_info=True)
-                         content += f"File type: Excel Spreadsheet\n\nError processing content: {str(oxl_e)}"
-
-            except Exception as e:
-                logging.error(f"Error processing Excel file {filename}: {str(e)}", exc_info=True)
-                content += f"File type: Excel Spreadsheet\n\nError processing content: {str(e)}"
-
-        elif file_extension == '.zip':
-            try:
-                # Read into BytesIO as ZipFile needs a seekable stream
-                zip_io = io.BytesIO(file_stream.read())
-                with ZipFile(zip_io) as zip_file:
-                    file_list = zip_file.namelist()
-                    content += f"File type: ZIP Archive\n\nContents ({len(file_list)} files/folders):\n"
-                    # Show limited number of files to avoid huge context
-                    preview_count = 20
-                    content += "\n".join(file_list[:preview_count])
-                    if len(file_list) > preview_count:
-                        content += f"\n... and {len(file_list) - preview_count} more"
-            except BadZipFile:
-                 logging.error(f"Error processing ZIP file {filename}: Invalid ZIP file.")
-                 content += "File type: ZIP Archive\n\nError: Invalid or corrupted ZIP file."
-            except Exception as e:
-                logging.error(f"Error processing ZIP file {filename}: {str(e)}", exc_info=True)
-                content += f"File type: ZIP Archive\n\nError processing content: {str(e)}"
-
-        else:
-            logging.warning(f"Unsupported file type: {filename} ({file_extension})")
-            content += f"Unsupported file type: {file_extension}. Cannot process content."
-
-        content += f"\n--- End of File: {filename} ---"
-        return content
-
+        raw_data = file_stream.read()
+        encoding = detect_encoding(raw_data)
+        content = raw_data.decode(encoding, errors='replace')
+        return f"\n--- Content from {filename} ---\n{content}\n---\n"
     except Exception as e:
-        logging.error(f"Critical error processing file {filename}: {str(e)}", exc_info=True)
-        return f"--- Start of File: {filename} ---\n\nAn critical error occurred during processing: {str(e)}\n\n--- End of File: {filename} ---"
+        logging.error(f"Error processing text file {filename}: {e}")
+        return f"\n--- Error processing {filename}: Could not read content ---\n"
 
-def process_files(files: List[FileStorage]) -> str:
-    """Processes a list of Flask FileStorage objects and concatenates their content."""
+def process_pdf_file(file_stream: io.BytesIO, filename: str) -> str:
+    """Placeholder: Processes a PDF file."""
+    logging.info(f"Processing PDF file (placeholder): {filename}")
+    # Add PyPDF2 logic here
+    content = f"\n--- Content from PDF {filename} (Processing not implemented) ---\n"
+    return content
+
+def process_docx_file(file_stream: io.BytesIO, filename: str) -> str:
+    """Placeholder: Processes a DOCX file."""
+    logging.info(f"Processing DOCX file (placeholder): {filename}")
+    # Add python-docx logic here
+    content = f"\n--- Content from DOCX {filename} (Processing not implemented) ---\n"
+    return content
+
+# Add placeholders for other file types (CSV, Excel, JSON, ZIP etc.) as needed
+
+def process_files(files: List[tuple[io.BytesIO, str]]) -> str:
+    """
+    Processes a list of uploaded files based on their type.
+    Args:
+        files: A list of tuples, where each tuple contains (file_stream, filename).
+               Using werkzeug FileStorage directly might be better if Flask context is available.
+               Here assuming BytesIO stream and filename are passed.
+    Returns:
+        A single string concatenating the processed content of all files.
+    """
     all_content = ""
     if not files:
         return ""
 
-    for file in files:
-        if file and file.filename: # Check if it's a valid file object
-            try:
-                file_content = process_file(file)
-                if file_content:
-                    all_content += file_content + "\n\n"
-            except Exception as e:
-                 logging.error(f"Failed to process file {file.filename} in list: {e}", exc_info=True)
-                 all_content += f"--- Error processing file: {file.filename} ---\n{str(e)}\n\n"
-        else:
-            logging.warning("Encountered an empty file object in the list.")
+    logging.info(f"Processing {len(files)} files...")
+    for file_stream, filename in files:
+        content = f"\n--- Error processing {filename}: Unsupported file type or processing not implemented ---\n"
+        try:
+            # Reset stream position in case it was read before
+            file_stream.seek(0)
 
-    # Simple check for total length (optional, prevents overly huge context)
-    max_len = 50000 # Example limit
-    if len(all_content) > max_len:
-        logging.warning(f"Combined file content length ({len(all_content)}) exceeded limit ({max_len}). Truncating.")
-        all_content = all_content[:max_len] + "\n\n[Content Truncated]"
+            # Basic type checking based on filename extension
+            _, extension = os.path.splitext(filename.lower())
 
-    return all_content.strip()
+            if extension in ['.txt', '.py', '.js', '.css', '.html', '.md', '.log', '.yaml', '.xml', '.json', '.csv']: # Add more text types
+                content = process_text_file(file_stream, filename)
+            elif extension == '.pdf':
+                content = process_pdf_file(file_stream, filename)
+            elif extension == '.docx':
+                content = process_docx_file(file_stream, filename)
+            # Add elif conditions for other supported types (Excel, Zip, etc.)
+            else:
+                 logging.warning(f"Skipping unsupported file type: {filename}")
 
-# --- AI Interaction ---
-def select_stream_model(provider: str, model: str, config_data: dict) -> dict:
-    """Selects and configures the AI provider client and model."""
-    if not config_data or 'providers' not in config_data:
-        raise ValueError("Configuration data is missing or invalid.")
+            all_content += content
 
-    provider_config = config_data.get('providers', {}).get(provider)
-    if not provider_config:
-        raise ValueError(f"Unknown or missing configuration for provider: {provider}")
+        except Exception as e:
+            logging.error(f"Failed to process file '{filename}': {e}", exc_info=True)
+            all_content += f"\n--- Unexpected error processing file {filename} ---\n"
+        finally:
+            # It's generally good practice to close streams if you fully control them,
+            # but Flask might manage request file streams differently.
+            # If these are BytesIO objects created from request files, closing might be fine.
+            # file_stream.close() # Be cautious with closing request streams directly
+            pass
 
-    # Validate model against provider's list
-    available_models = provider_config.get('models', [])
-    if model not in available_models:
-        logging.warning(f"Model '{model}' not listed for provider '{provider}'. Using default or first available.")
-        model = provider_config.get('default_model', available_models[0] if available_models else None)
-        if not model:
-             raise ValueError(f"No valid models available for provider: {provider}")
 
-    try:
-        if provider == "IONOS":
-            client = configure_ionos_client(provider_config)
-        elif provider == "GOOGLE":
-            client = configure_google_client(provider_config)
-        elif provider == "OLLAMA":
-            client = configure_ollama_client(provider_config)
-        else:
-            raise ValueError(f"Provider '{provider}' configuration exists but is not implemented.")
-        return {"client": client, "model": model}
-    except (ValueError, KeyError, APIError) as e:
-        logging.error(f"Failed to configure client for {provider}: {e}", exc_info=True)
-        raise ValueError(f"Failed to configure AI client for {provider}: {e}")
+    logging.info(f"Finished processing files. Total content length (approx): {len(all_content)}")
+    return all_content
 
+
+# --- Core LLM Streaming Logic ---
 
 def stream_question(
     provider: str,
@@ -332,86 +212,102 @@ def stream_question(
     persona: str,
     history: List[Dict[str, str]],
     prompt: str,
-    files: List[FileStorage], # Use FileStorage type hint
+    # files: List[io.BytesIO], # Change type if using Flask's FileStorage directly
+    files: List[tuple[io.BytesIO, str]], # Use tuple (stream, filename)
     config_data: dict
 ) -> Generator[str, None, None]:
-    """Processes input and streams the response from the AI model as text chunks."""
-
-    # Ensure config is loaded
-    if not config_data:
-         yield "Error: Server configuration is missing or invalid. Cannot process request."
-         return
-
-    # Basic input validation
-    if not prompt.strip():
-        yield "Error: Prompt cannot be empty."
-        return
-    if not provider or not model:
-        yield "Error: Provider or model not selected."
-        return
-
+    """
+    Gets response from the AI model as a stream of text chunks.
+    Handles client selection, message preparation, file processing, and API call.
+    Yields content chunks or error messages.
+    """
+    client = None
     try:
-        ai_provider = select_stream_model(provider, model, config_data)
-        client = ai_provider["client"]
-        model_name = ai_provider["model"]
-        logging.info(f"Using model: {model_name} via {provider}")
+        # --- 1. Get Provider Configuration ---
+        provider_config = config_data.get('providers', {}).get(provider)
+        if not provider_config:
+            raise ValueError(f"Configuration for provider '{provider}' not found.")
 
-        system_message = get_persona_message(persona, config_data)
+        # --- 2. Configure AI Client ---
+        if provider == 'IONOS':
+            client = configure_ionos_client(provider_config)
+        elif provider == 'GOOGLE':
+            # Assuming Google uses an OpenAI-compatible endpoint as configured
+            client = configure_google_client(provider_config)
+        elif provider == 'OLLAMA':
+            client = configure_ollama_client(provider_config)
+        else:
+            raise ValueError(f"Unsupported provider selected: {provider}")
 
-        messages = [{"role": "system", "content": system_message}]
+        if not client:
+            # This should ideally be caught by specific config errors, but as a safeguard:
+            raise ConnectionError(f"Failed to initialize client for provider {provider}.")
 
-        # Add validated history (ensure role is user/assistant)
-        for message in history:
-            role = message.get("role")
-            content = message.get("content")
-            if role in ["user", "assistant"] and isinstance(content, str):
-                messages.append({"role": role, "content": content})
-            else:
-                logging.warning(f"Skipping invalid history item: {message}")
+        # --- 3. Prepare Messages for API ---
+        system_message_content = get_persona_message(persona, config_data)
+        messages = [{"role": "system", "content": system_message_content}]
 
+        # Add history (filter out placeholders if frontend sends them)
+        valid_history = [
+            msg for msg in history
+            if isinstance(msg, dict) and msg.get("role") and msg.get("content") and msg.get("content") != '...'
+        ]
+        messages.extend(valid_history)
 
-        # Process files (already returns a string)
-        files_content = ""
-        if files:
-            try:
-                files_content = process_files(files) # Pass the list of FileStorage objects
-                if files_content:
-                    files_content = f"\n\n--- Attached Files Context ---\n{files_content}"
-            except Exception as e:
-                logging.error(f"Error processing files in stream_question: {str(e)}", exc_info=True)
-                # Yield error to user instead of just logging?
-                yield f"Error processing attached files: {str(e)}\n"
-                # Decide if you want to continue without file context or stop
-                # files_content = f"\n\n[Error processing files: {str(e)}]" # Option to still send prompt
+        # --- 4. Process Files and Combine with Prompt ---
+        # This calls the (currently placeholder) file processing logic
+        file_context = process_files(files) if files else ""
 
-        user_content = prompt + files_content
-        messages.append({"role": "user", "content": user_content})
+        # Combine user prompt with file context
+        final_prompt = prompt
+        if file_context:
+            # Add a separator and the extracted file content
+            final_prompt = f"{prompt}\n\n--- Context from Uploaded Files ---\n{file_context}\n--- End of File Context ---"
+            logging.info(f"Added context from {len(files)} files to the prompt.")
 
-        logging.debug(f"Sending messages to API: {messages}") # Be careful logging full messages in prod
+        messages.append({"role": "user", "content": final_prompt})
 
+        logging.info(f"Sending request to {provider} model {model}. Total messages: {len(messages)}")
+        # Optional: Log message content snippets for debugging (be mindful of size/privacy)
+        # logging.debug(f"System Prompt: {messages[0]['content'][:100]}...")
+        # logging.debug(f"User Prompt: {messages[-1]['content'][:200]}...")
+
+        # --- 5. Make Streaming API Call ---
         stream = client.chat.completions.create(
-            model=model_name,
+            model=model,
             messages=messages,
-            stream=True,
-            temperature=0.7, # Example parameter, adjust as needed
-            # max_tokens=1000 # Example parameter
+            stream=True
         )
 
-        for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content is not None:
-                yield content # Yield only the new text chunk
+        # --- 6. Process Stream and Yield Chunks ---
+        for response_chunk in stream:
+            # The exact structure of 'response_chunk' can vary slightly,
+            # but for OpenAI compatible APIs, it's usually like this:
+            if response_chunk.choices:
+                delta = response_chunk.choices[0].delta
+                content_chunk = delta.content
+                if content_chunk:  # Check if there is actual text content
+                    #logging.debug(f"Yielding chunk: '{content_chunk}'") # Very verbose
+                    yield content_chunk # <-- This is where the defined 'content_chunk' is yielded
 
+    # --- Error Handling ---
     except APIError as e:
-        logging.error(f"OpenAI API Error: {e.status_code} - {e.message}", exc_info=True)
-        yield f"\n\nError from AI Provider ({provider}): {e.message}"
-    except ValueError as e:
-         logging.error(f"Configuration or Value Error: {str(e)}", exc_info=True)
-         yield f"\n\nConfiguration Error: {str(e)}"
-    except ConnectionError as e:
-         logging.error(f"Connection Error: {str(e)}", exc_info=True)
-         yield f"\n\nConnection Error: Could not reach the AI service ({provider}). Please check the Base URL and network."
-    except Exception as e:
-        logging.error(f"Unexpected error streaming response: {str(e)}", exc_info=True)
-        # Yield a generic error message to the user
-        yield f"\n\nAn unexpected error occurred: {str(e)}"
+        error_message = f"API Error from {provider}: Status={e.status_code}, Message={getattr(e, 'message', str(e))}"
+        logging.error(error_message, exc_info=True)
+        yield f"Error: {error_message}" # Yield error to frontend
+    except ValueError as e: # Catch config/value errors (e.g., missing keys, unsupported provider)
+        error_message = f"Configuration or Value Error: {str(e)}"
+        logging.error(error_message, exc_info=False) # No need for full traceback for config issues
+        yield f"Error: {error_message}"
+    except ConnectionError as e: # Catch client connection issues
+         error_message = f"Connection Error for {provider}: {str(e)}"
+         logging.error(error_message, exc_info=True)
+         yield f"Error: {error_message}"
+    except Exception as e: # Catch any other unexpected errors during streaming
+        error_message = f"An unexpected error occurred during generation: {str(e)}"
+        logging.error(error_message, exc_info=True)
+        yield f"Error: {error_message}"
+    finally:
+        # Close the client? Typically not needed for standard OpenAI client usage pattern.
+        # If using custom clients with manual session management, cleanup might go here.
+        logging.info(f"Stream generation finished or terminated for provider {provider}.")
