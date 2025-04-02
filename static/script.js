@@ -30,21 +30,58 @@ function sanitizeHTML(htmlString) {
 // --- Helper: Enhance code blocks for Prism ---
 function enhanceCodeBlocks(element) {
     const codeBlocks = element.querySelectorAll('pre > code');
-    codeBlocks.forEach(codeBlock => {
+    const rawContent = element.dataset.rawContent || '';
+    
+    // Add a copy full message button if there's content to copy
+    if (rawContent && !element.querySelector('.copy-markdown-button')) {
+        const copyFullBtn = document.createElement('button');
+        copyFullBtn.className = 'copy-markdown-button';
+        copyFullBtn.textContent = 'Copy Full Message as Markdown';
+        copyFullBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(rawContent)
+                .then(() => {
+                    copyFullBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyFullBtn.textContent = 'Copy Full Message as Markdown';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy markdown: ', err);
+                });
+        });
+        element.appendChild(copyFullBtn);
+    }
+    
+    // Process each code block
+    codeBlocks.forEach((codeBlock, index) => {
+        // Add language class if missing
         if (!codeBlock.className.includes('language-')) {
             codeBlock.classList.add('language-plaintext');
         }
+        
+        // Get the language from the class
+        const langMatch = codeBlock.className.match(/language-(\w+)/);
+        const language = langMatch ? langMatch[1] : 'plaintext';
+        
         const preBlock = codeBlock.parentElement;
         if (!preBlock.parentElement.classList.contains('code-block')) {
             const wrapper = document.createElement('div');
             wrapper.className = 'code-block';
             preBlock.parentNode.insertBefore(wrapper, preBlock);
             wrapper.appendChild(preBlock);
+            
+            // Add copy button that includes markdown formatting
             const copyBtn = document.createElement('button');
             copyBtn.className = 'copy-button';
             copyBtn.textContent = 'Copy';
             copyBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(codeBlock.textContent)
+                // Get the code content
+                const codeContent = codeBlock.textContent;
+                
+                // Format with markdown triple backticks and language
+                const formattedCode = '```' + language + '\n' + codeContent + '\n```';
+                
+                navigator.clipboard.writeText(formattedCode)
                     .then(() => {
                         copyBtn.textContent = 'Copied!';
                         setTimeout(() => {
@@ -58,6 +95,7 @@ function enhanceCodeBlocks(element) {
             wrapper.appendChild(copyBtn);
         }
     });
+    
     if (window.Prism) {
         Prism.highlightAllUnder(element);
     }
@@ -112,10 +150,14 @@ function addMessage(role, content, isStreaming = false) {
 
     let finalContent = '';
     if (role === 'assistant') { 
-        const unsafeHtml = marked.parse(content); 
-        finalContent = sanitizeHTML(unsafeHtml); 
-        messageDiv.dataset.rawContent = content; 
+        // Store the original content for copying
+        messageDiv.dataset.rawContent = content;
+        
+        // Parse Markdown and then sanitize the HTML for display
+        const markdownHtml = marked.parse(content);
+        finalContent = sanitizeHTML(markdownHtml);
     } else { 
+        // For user messages, escape the content to prevent XSS
         const escapedContent = content
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -130,6 +172,7 @@ function addMessage(role, content, isStreaming = false) {
     chatHistory.scrollTop = chatHistory.scrollHeight; 
     
     if (role === 'assistant') {
+        // After adding the message, enhance code blocks for Prism
         enhanceCodeBlocks(messageDiv);
     }
 
@@ -144,6 +187,7 @@ function addMessage(role, content, isStreaming = false) {
     return messageDiv;
 }
 
+
 // Append a chunk of text to the currently streaming bot message
 function appendStreamChunk(chunk) {
     if (currentBotMessageDiv) {
@@ -151,8 +195,9 @@ function appendStreamChunk(chunk) {
         currentRawContent += chunk;
         currentBotMessageDiv.dataset.rawContent = currentRawContent;
 
-        const unsafeHtml = marked.parse(currentRawContent);
-        const safeHtml = sanitizeHTML(unsafeHtml);
+        const markdownHtml = marked.parse(currentRawContent);
+        const safeHtml = sanitizeHTML(markdownHtml);
+        
         currentBotMessageDiv.innerHTML = safeHtml;
         enhanceCodeBlocks(currentBotMessageDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight; 
@@ -162,10 +207,11 @@ function appendStreamChunk(chunk) {
     }
 }
 
+
 // Finalize the bot message after streaming ends
 function finalizeBotMessage() {
     if (currentBotMessageDiv) {
-        const finalRawContent = currentBotMessageDiv.dataset.rawContent || ''; 
+        const finalRawContent = currentBotMessageDiv.dataset.rawMarkdown || ''; 
         const lastMsgIndex = conversationHistory.length - 1;
         if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant' && conversationHistory[lastMsgIndex].content === '...') {
             conversationHistory[lastMsgIndex].content = finalRawContent; 
@@ -175,14 +221,23 @@ function finalizeBotMessage() {
             conversationHistory.push({ role: 'assistant', content: finalRawContent });
         }
 
-        delete currentBotMessageDiv.dataset.rawContent;
+        // Keep the raw Markdown for potential copying but set a flag that it's finalized
+        currentBotMessageDiv.dataset.finalized = 'true';
         currentBotMessageDiv = null; 
         
         enhanceCodeBlocks(chatHistory.lastElementChild);
     } else {
         console.log("Finalize called but no active bot message div.");
     }
+    
+    // Replace the "Stop" button with the "Send" button
+    const stopButton = buttonGroup.querySelector('button.btn.btn-danger');
+    if (stopButton) {
+        buttonGroup.replaceChild(sendButton, stopButton);
+        sendButton.disabled = false;
+    }
 }
+
 
 // Handle the chat form submission
 async function handleFormSubmit(event) {
