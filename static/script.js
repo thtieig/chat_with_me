@@ -458,7 +458,6 @@ function clearChat() {
 }
 
 // Update the text displaying the names/count of attached files
-// Update the text displaying the names/count of attached files
 function updateAttachmentNames() {
     if (!attachmentNamesSpan) return;
     const numFiles = combinedFiles.length;
@@ -485,6 +484,15 @@ function updateAttachmentNames() {
             };
             fileDiv.appendChild(removeButton);
 
+            fileDiv.addEventListener('click', (e) => {
+                if (e.target === removeButton) {
+                    // Do nothing, let the button's onclick handler delete the file
+                } else {
+                    // Prevent the file input from opening when clicking on an existing file
+                    e.stopPropagation();
+                }
+            });
+
             fileContainer.appendChild(fileDiv);
         });
 
@@ -492,6 +500,25 @@ function updateAttachmentNames() {
         attachmentNamesSpan.appendChild(fileContainer);
     }
 }
+
+dropZone.addEventListener('click', (e) => {
+    if (e.target === dropZone) {
+        // Only open the file input if the drop zone itself is clicked
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.multiple = true; 
+        fileInput.onchange = (event) => {
+            if (event.target.files.length > 0) {
+                const files = Array.from(event.target.files);
+                console.log(`Files selected via click: ${files.length}`);
+                addNewFiles(files);
+                updateAttachmentNames();
+            }
+        };
+        fileInput.click();
+    }
+});
+
 
 // Add new files to the list
 function addNewFiles(newFiles) {
