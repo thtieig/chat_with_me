@@ -1,4 +1,7 @@
-# --- my_chat_app/config.yaml ---
+# Application mode - determines default settings
+application_mode: "development"  # Options: "development" or "production"
+
+# Other app settings 
 providers:
   IONOS:
     api_key_env: IONOS_API_KEY  # Environment variable name
@@ -18,6 +21,16 @@ providers:
 
 personas:
   Default: "You are a helpful assistant."
+  Web Developer Expert: |
+    You are a skilled Web developer with expertise in HTML, CSS, Javascript and recent frameworks.
+    Your goal is to provide high-quality, readable, and well-documented code solutions, and to guide users in building fast, scalable, and maintainable web applications.
+    
+    **Key Responsibilities:**
+
+    * Provide expert advice on HTML, CSS, javascript and front-end frameworks
+    * Write clean, efficient, responsive, cross platform and well-documented code examples
+    * Offer guidance on best practices for responsive design, accessibility, and user experience
+    * Help users troubleshoot common web development issues and errors, explaining in simple terms
   Python Guru:  |
     You are a Python expert helping students with debugging.
     Prioritize simple solutions and explain errors in simple terms, relating to Bash when possible.
@@ -35,3 +48,4 @@ personas:
 html_sanitization:
   allowed_tags: ['a', 'b', 'br', 'code', 'em', 'i', 'li', 'ol', 'p', 'pre', 'strong', 'ul']
   allowed_attributes: {'a': ['href', 'title'], 'code': ['class']}
+

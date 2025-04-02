@@ -1,21 +1,29 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chat (Flask)</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Optional: Add link to favicon -->
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Chatbot</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+        
+        <!-- Prism setup (autoload)-->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    </head>
 <body>
     <div class="container">
-        <h1>AI Chat</h1>
+        <h1><span class='rainbow-title'>AI Chatbot</span></h1>
 
         <div class="chat-area card">
             <div id="chat-history">
-                <!-- Chat messages will be appended here -->
-                <div class="message bot">Welcome! Select your options and ask a question.</div>
+                <!-- Initial message doesn't need Markdown parsing -->
+                <div class="message bot">Welcome! Select your options and ask a question. You can upload files and/or a directory.</div>
             </div>
         </div>
 
@@ -36,12 +44,12 @@
                             {% for model in initial_models %}
                                 <option value="{{ model }}" {% if model == initial_default_model %}selected{% endif %}>{{ model }}</option>
                             {% endfor %}
-                         </select>
+                        </select>
                     </div>
                     <div class="control-group">
                         <label for="persona-select">Persona:</label>
                         <select id="persona-select" name="persona">
-                             {% for persona in personas %}
+                            {% for persona in personas %}
                                 <option value="{{ persona }}" {% if persona == 'Default' %}selected{% endif %}>{{ persona }}</option>
                             {% endfor %}
                         </select>
@@ -49,25 +57,26 @@
                 </div>
 
                 <div class="message-input">
-                     <textarea id="message-input" name="message" placeholder="Type your message..." rows="3" required></textarea>
-                     <div class="file-input">
-                        <label for="file-input-field" class="file-label">Attach Files</label>
-                        <input type="file" id="file-input-field" name="files" multiple>
-                        <span id="file-names">No files selected</span>
-                     </div>
+                    <textarea id="message-input" name="message" placeholder="Type your message..." rows="3"></textarea> <!-- Removed 'required' to allow sending just files -->
+                    <div class="attachment-area">
+                        <div id="drop-zone">
+                            <p>Drag and drop files or a directory here, or click to select</p>
+                            <span id="attachment-names">No files or folders added</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="button-group">
                     <button type="submit" id="send-button">Send</button>
                     <button type="button" id="clear-button">Clear</button>
-                    <!-- Interrupt button needs more complex handling (AbortController) -->
-                    <!-- <button type="button" id="interrupt-button" disabled>Interrupt</button> -->
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Include JavaScript -->
+<!-- Add more code blocks as needed -->
+
+    <!-- Load main script *after* libraries are available -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
