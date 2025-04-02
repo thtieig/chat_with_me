@@ -55,3 +55,4 @@ test*
 .gradio
 __pycache__
 venv
+config.yaml

@@ -67,9 +67,25 @@ IONOS_API_KEY=your_ionos_api_key_here
 GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-### Providers, Models, and Personas
+### Providers, Models, Personas and Environment
 
-Modify the `config.yaml` file to add or remove AI providers, update the list of available models for each provider, define or change AI personas (system prompts).
+Rename the `config.yaml.example` file to `config.yaml`.   
+Add or remove AI providers, update the list of available models for each provider, define or change AI personas (system prompts). Here you can also set `application_mode` to `production` once happy with the script.   
+
+The application supports both *development* and *production* environments. You can configure the environment by modifying the `config.yaml` file.
+
+#### Development Environment
+
+*   Set `application_mode` to `development` in `config.yaml`.
+*   This will enable debug mode and log chat content to the console.
+*   Access is restricted to localhost.
+
+#### Production Environment
+
+*   Set `application_mode` to `production` in `config.yaml`.
+*   This will disable debug mode and log chat content to a file.
+*   Access is available on `0.0.0.0`.
+
 
 ## Running the Application
 -------------------------
@@ -101,29 +117,6 @@ python app.py
 9.  Click the **Clear** button to reset the conversation history and file selection.
 
 Please ensure you have the necessary API keys and configure them properly in the `.env` file before running the application. Also, be aware of the terms of service and usage guidelines for each AI provider you configure.
-
-## Development and Production Setup
---------------------------------
-
-The application supports both *development* and *production* environments. You can configure the environment by modifying the `config.yaml` file.
-
-### Development Environment
-
-*   Set `application_mode` to `development` in `config.yaml`.
-*   This will enable debug mode and log chat content to the console.
-*   Access is restricted to localhost.
-
-### Production Environment
-
-*   Set `application_mode` to `production` in `config.yaml`.
-*   This will disable debug mode and log chat content to a file.
-*   Access is available on `0.0.0.0`.
-
-### Environment Configuration Example (default)
-
-```yml
-application_mode: development  # or production
-```
 
 ## License
 -------
