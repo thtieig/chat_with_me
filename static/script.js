@@ -601,22 +601,26 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
         e.preventDefault(); e.stopPropagation();
         if (!dropZone.contains(e.relatedTarget)) { dropZone.classList.remove('dragover'); }
     });
+    // Update dropZone event listeners to handle DataTransferItems
     dropZone.addEventListener('drop', async (e) => {
-        console.log("Drop event fired!");
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
         dropZone.classList.remove('dragover');
         attachmentNamesSpan.textContent = 'Processing dropped items...';
-
+    
         const items = e.dataTransfer.items;
-        const files = e.dataTransfer.files; 
+        const files = e.dataTransfer.files;
         const droppedFiles = [];
         const promises = [];
-
+    
         if (items && items.length > 0 && items[0].webkitGetAsEntry) {
-            console.log("Processing dropped items using webkitGetAsEntry API.");
             for (let i = 0; i < items.length; i++) {
                 const entry = items[i].webkitGetAsEntry();
-                if (entry) { promises.push(scanDirectoryEntry(entry)); }
+                if (entry) {
+                    promises.push(scanDirectoryEntry(entry));
+                } else {
+                    // If the item is not a directory entry, it's a file
+                    droppedFiles.push(files[i]);
+                }
             }
             try {
                 const fileArrays = await Promise.all(promises);
@@ -627,7 +631,7 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
             } catch (error) {
                 console.error('Error processing dropped items:', error);
                 addMessage('error', `Error processing dropped items: ${error.message}`);
-                updateAttachmentNames(); 
+                updateAttachmentNames();
             }
         } else if (files && files.length > 0) {
             console.log("Processing dropped files using fallback dataTransfer.files API.");
@@ -635,25 +639,64 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
             updateAttachmentNames();
         } else {
             console.log("No items or files found in drop event.");
-            updateAttachmentNames(); 
+            updateAttachmentNames();
         }
     });
+   
+
+    // Function to scan a directory entry and get all files recursively
+    async function scanDirectoryEntry(entry) {
+        if (entry.isFile) {
+            return new Promise((resolve, reject) => {
+                entry.file(file => resolve([file]), err => reject(err));
+            });
+        } else if (entry.isDirectory) {
+            let reader = entry.createReader();
+            let allEntries = [];
+            return new Promise((resolve, reject) => {
+                const readEntries = async () => {
+                    reader.readEntries(async (entries) => {
+                        if (entries.length > 0) {
+                            const batchPromises = [];
+                            for (const subEntry of entries) {
+                                batchPromises.push(scanDirectoryEntry(subEntry));
+                            }
+                            try {
+                                const fileArrays = await Promise.all(batchPromises);
+                                fileArrays.forEach(fileArray => allEntries.push(...fileArray));
+                                readEntries();
+                            } catch (err) {
+                                reject(err);
+                            }
+                        } else {
+                            resolve(allEntries);
+                        }
+                    }, err => reject(err));
+                };
+                readEntries();
+            });
+        }
+        return [];
+    }
+
 
     dropZone.addEventListener('click', () => {
         if (sendButton.disabled) return; 
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.multiple = true;
+        fileInput.multiple = true; // Allow multiple file selection
         fileInput.onchange = (event) => {
             if (event.target.files.length > 0) {
-                console.log(`Files selected via click: ${event.target.files.length}`);
-                addNewFiles(Array.from(event.target.files));
+                const files = Array.from(event.target.files);
+                console.log(`Files selected via click: ${files.length}`);
+                addNewFiles(files);
                 updateAttachmentNames();
             }
         };
         fileInput.click();
     });
-
+    
+    
     fetchConfig();
 
 } else {

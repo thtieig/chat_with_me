@@ -170,7 +170,6 @@ def process_files(files: List[tuple[io.BytesIO, str]]) -> str:
 
     logging.info(f"Processing {len(files)} files...")
     for file_stream, filename in files:
-        content = f"\n--- Error processing {filename}: Unsupported file type or processing not implemented ---\n"
         try:
             # Reset stream position in case it was read before
             file_stream.seek(0)
@@ -178,7 +177,7 @@ def process_files(files: List[tuple[io.BytesIO, str]]) -> str:
             # Basic type checking based on filename extension
             _, extension = os.path.splitext(filename.lower())
 
-            if extension in ['.txt', '.py', '.js', '.css', '.html', '.md', '.log', '.yaml', '.xml', '.json', '.csv']: # Add more text types
+            if extension in ['.txt', '.py', '.js', '.css', '.html', '.md', '.log', '.yaml', '.xml', '.json', '.csv']: 
                 content = process_text_file(file_stream, filename)
             elif extension == '.pdf':
                 content = process_pdf_file(file_stream, filename)
@@ -186,7 +185,7 @@ def process_files(files: List[tuple[io.BytesIO, str]]) -> str:
                 content = process_docx_file(file_stream, filename)
             # Add elif conditions for other supported types (Excel, Zip, etc.)
             else:
-                 logging.warning(f"Skipping unsupported file type: {filename}")
+                logging.warning(f"Skipping unsupported file type: {filename}")
 
             all_content += content
 
@@ -194,12 +193,7 @@ def process_files(files: List[tuple[io.BytesIO, str]]) -> str:
             logging.error(f"Failed to process file '{filename}': {e}", exc_info=True)
             all_content += f"\n--- Unexpected error processing file {filename} ---\n"
         finally:
-            # It's generally good practice to close streams if you fully control them,
-            # but Flask might manage request file streams differently.
-            # If these are BytesIO objects created from request files, closing might be fine.
-            # file_stream.close() # Be cautious with closing request streams directly
-            pass
-
+            pass  # Be cautious with closing request streams directly
 
     logging.info(f"Finished processing files. Total content length (approx): {len(all_content)}")
     return all_content
