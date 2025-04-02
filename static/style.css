@@ -1,150 +1,264 @@
 /* --- my_chat_app/static/style.css --- */
-/* Keep ALL existing styles */
-body { font-family: sans-serif; margin: 0; background-color: #f4f7f6; color: #333; display: flex; justify-content: center; padding: 1em; line-height: 1.5; /* Improve overall readability */}
-.container { max-width: 800px; width: 100%; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; max-height: 95vh; /* Prevent vertical overflow */}
-h1 { text-align: center; color: #1a73e8; margin: 0; padding: 0.8em 0; background-color: #e8f0fe; font-size: 1.5em; flex-shrink: 0; /* Prevent shrinking */}
-.card { padding: 1.5em; margin: 1em; background-color: #ffffff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-.chat-area { flex-grow: 1; /* Allow chat area to take up space */ height: 50vh; /* Suggest initial height */ overflow-y: auto; border: 1px solid #eee; margin-bottom: 0; padding: 1em; /* Add padding inside scroll area */ }
-#chat-history { display: flex; flex-direction: column; gap: 0.8em; }
-.message { padding: 0.8em 1.2em; border-radius: 15px; max-width: 85%; /* Slightly wider */ word-wrap: break-word; line-height: 1.4; }
-.user { background-color: #d1e7fd; align-self: flex-end; border-bottom-right-radius: 5px; }
-.bot { background-color: #e9ecef; align-self: flex-start; border-bottom-left-radius: 5px; }
 
-/* --- Enhanced Bot Message Formatting --- */
-.bot pre {
-    background-color: #f0f0f0; /* Light grey background for code blocks */
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.bot code {
-    font-family: monospace;
-    font-size: 0.9em;
-}
-
-/* Styling for code inside pre (often languages like 'python' are added as class) */
-.bot pre code {
-    /* Reset inline code styles */
-    background-color: transparent;
-    color: inherit; /* Inherit color from <pre> */
+/* Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
     padding: 0;
-    border-radius: 0;
-    white-space: inherit; /* Inherit whitespace handling from <pre> */
 }
 
-/* Basic list styling */
-.bot ul, .bot ol {
-    margin: 0.5em 0 0.5em 1.5em; /* Indent lists */
-    padding-left: 1.5em;
-}
-.bot li {
-    margin-bottom: 0.3em; /* Space between list items */
-}
-
-/* Basic bold/italic */
-.bot strong { font-weight: bold; }
-.bot em { font-style: italic; }
-
-/* Links */
-.bot a {
-    color: #0056b3;
-    text-decoration: underline;
-}
-.bot a:hover {
-    color: #003d80;
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    padding: 1em;
+    line-height: 1.5; 
 }
 
+/* Container Styles */
+.container {
+    max-width: 800px;
+    width: 100%;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 95vh; 
+}
 
-/* --- Input Area & Controls --- */
-.input-area { border-top: 1px solid #eee; margin-top: 0; flex-shrink: 0; /* Prevent shrinking */}
-#chat-form { display: flex; flex-direction: column; gap: 1em; }
-.settings { display: flex; flex-wrap: wrap; gap: 1em; padding-bottom: 0em; /* Reduce padding */ /*border-bottom: 1px solid #eee;*/ }
-.control-group { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 0.3em; }
-label { font-weight: bold; font-size: 0.9em; color: #555; margin-bottom: 0.2em; /* Space below label */}
-select, textarea { width: 100%; padding: 0.6em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em; background-color: #fff; /* Ensure background */}
-textarea { resize: vertical; min-height: 60px; /* Minimum height */ }
-.message-input { display: flex; flex-direction: column; gap: 0.5em; /* Space between textarea and dropzone */ margin-top: 1em; }
+/* Header Styles */
+h1 {
+    text-align: center;
+    color: #1a73e8;
+    margin: 0;
+    padding: 0.8em 0;
+    background-color: #e8f0fe;
+    font-size: 1.5em;
+    flex-shrink: 0; 
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
 
-.attachment-area { /* Container for drop zone */}
+/* Chat Area Styles */
+.chat-area {
+    flex-grow: 1; 
+    height: 50vh; 
+    overflow-y: auto;
+    border: 1px solid #eee;
+    margin-bottom: 0;
+    padding: 1em; 
+    background-color: #f9f9f9;
+}
 
-/* --- Drag and Drop Area Styles --- */
+#chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+}
+
+/* Message Styles */
+.message {
+    padding: 0.8em 1.2em;
+    border-radius: 15px;
+    max-width: 85%; 
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.user {
+    background-color: #d1e7fd;
+    align-self: flex-end;
+    border-bottom-right-radius: 5px;
+}
+
+.bot {
+    background-color: #e9ecef;
+    align-self: flex-start;
+    border-bottom-left-radius: 5px;
+}
+
+.error {
+    color: #721c24; 
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px; 
+    align-self: stretch; 
+    text-align: center;
+    margin: 0.5em 0; 
+}
+
+/* Input Area Styles */
+.input-area {
+    border-top: 1px solid #eee;
+    margin-top: 0;
+    flex-shrink: 0; 
+}
+
+#chat-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    padding-bottom: 0em; 
+}
+
+.control-group {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+}
+
+label {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 0.2em; 
+}
+
+select, textarea {
+    width: 100%;
+    padding: 0.6em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+    background-color: #fff; 
+}
+
+textarea {
+    resize: vertical;
+    min-height: 60px; 
+}
+
+.message-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em; 
+    margin-top: 1em;
+}
+
+.attachment-area {
+    
+}
+
+/* Drop Zone Styles */
 #drop-zone {
     border: 2px dashed #ccc;
     border-radius: 8px;
-    padding: 20px; /* Slightly less padding */
+    padding: 20px; 
     text-align: center;
     color: #aaa;
     background-color: #f9f9f9;
     transition: background-color 0.2s ease, border-color 0.2s ease;
-    margin-top: 0.5em; /* Space above drop zone */
-    cursor: pointer; /* Indicate it's clickable */
+    margin-top: 0.5em; 
+    cursor: pointer; 
 }
+
 #drop-zone p {
-    margin: 0 0 8px 0; /* Smaller margin */
-    font-size: 1.0em; /* Slightly smaller text */
+    margin: 0 0 8px 0; 
+    font-size: 1.0em; 
     pointer-events: none;
-    color: #777; /* Less faint color */
+    color: #777; 
 }
+
 #drop-zone span#attachment-names {
-    font-size: 0.85em; /* Smaller file name text */
-    color: #555; /* Darker file name text */
+    font-size: 0.85em; 
+    color: #555; 
     display: block;
     margin-top: 5px;
     min-height: 1.2em;
     word-wrap: break-word;
 }
+
 #drop-zone.dragover {
     border-color: #1a73e8;
     background-color: #e8f0fe;
 }
 
-
-/* --- Buttons --- */
-.button-group { display: flex; justify-content: flex-end; gap: 0.5em; margin-top: 1em; }
-button { padding: 0.7em 1.5em; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; transition: background-color 0.2s ease; }
-button#send-button { background-color: #1a73e8; color: white; }
-button#send-button:hover { background-color: #1765cc; }
-button#send-button:disabled { background-color: #a0c3f0; cursor: not-allowed; }
-button#clear-button { background-color: #6c757d; color: white; }
-button#clear-button:hover { background-color: #5a6268; }
-button#clear-button:disabled { background-color: #adb5bd; cursor: not-allowed;} /* Disabled style for clear */
-
-/* --- Error Message --- */
-.error {
-    color: #721c24; /* Darker red text */
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 4px; /* Match other elements */
-    align-self: stretch; /* Take full width */
-    text-align: center;
-    margin: 0.5em 0; /* Add vertical margin */
-    /* Keep padding defined in .message */
+/* Button Styles */
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5em;
+    margin-top: 1em;
 }
 
-.code-block {
-    position: relative;
-    margin-bottom: 20px;
+button {
+    padding: 0.7em 1.5em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
 }
 
-.copy-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+button#send-button {
     background-color: #1a73e8;
     color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
 }
 
-.copy-button:hover {
+button#send-button:hover {
     background-color: #1765cc;
 }
+
+button#send-button:disabled {
+    background-color: #a0c3f0;
+    cursor: not-allowed;
+}
+
+button#clear-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+button#clear-button:hover {
+    background-color: #5a6268;
+}
+
+button#clear-button:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;} 
 
 .rainbow-title {
     background: linear-gradient(to right, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff69b4, #ff00ff, #800080);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 3rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        width: 90%;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        width: 95%;
+    }
+    .chat-area {
+        height: 40vh;
+    }
+    .input-area {
+        flex-direction: column;
+    }
+    .settings {
+        flex-direction: column;
+    }
+    .control-group {
+        min-width: 100%;
+    }
 }
