@@ -243,10 +243,13 @@ def stream_question(
         messages = [{"role": "system", "content": system_message_content}]
 
         # Add history (filter out placeholders if frontend sends them)
-        valid_history = [
-            msg for msg in history
-            if isinstance(msg, dict) and msg.get("role") and msg.get("content") and msg.get("content") != '...'
-        ]
+        valid_history = []
+        for msg in history:
+            if isinstance(msg, dict) and msg.get("role") and msg.get("content") and msg.get("content") != '...':
+                # Map 'bot' role to 'assistant' for compatibility with Google API
+                if msg.get("role") == "bot":
+                    msg = {"role": "assistant", "content": msg.get("content")}
+                valid_history.append(msg)
         messages.extend(valid_history)
 
         # --- 4. Process Files and Combine with Prompt ---
