@@ -122,10 +122,7 @@ function enhanceCodeBlocks(element) {
                 // Get the code content
                 const codeContent = codeBlock.textContent;
                 
-                // Format with markdown triple backticks and language
-                const formattedCode = '```' + language + '\n' + codeContent + '\n```';
-                
-                navigator.clipboard.writeText(formattedCode)
+                navigator.clipboard.writeText(codeContent)
                     .then(() => {
                         copyBtn.textContent = 'Copied!';
                         setTimeout(() => {
