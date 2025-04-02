@@ -5,7 +5,7 @@ import yaml
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context, send_from_directory
 from werkzeug.utils import secure_filename
 import logging
-import llm_logic  # Assuming llm_logic.py is in the same directory or Python path
+import llm_logic  # llm_logic.py in the same directory or Python path
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Needed for potential session usage, good practice
