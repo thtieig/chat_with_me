@@ -232,7 +232,6 @@ async function handleFormSubmit(event) {
         });
     }
 
-    combinedFiles = []; 
     updateAttachmentNames(); 
 
     try {
