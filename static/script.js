@@ -451,10 +451,12 @@ function updateAttachmentNames() {
             attachmentNamesSpan.textContent = `Directory '${dirName}' added (${numFiles} files)`;
         } else {
             // Mix of files/folders or just multiple files
-            attachmentNamesSpan.textContent = `${numFiles} files/items added`;
+            const fileNames = combinedFiles.map(file => file.name).join(', ');
+            attachmentNamesSpan.textContent = `${numFiles} files added: ${fileNames}`;
         }
     }
 }
+
 
 // Disable or enable form controls and drop zone
 function setFormDisabled(disabled) {
