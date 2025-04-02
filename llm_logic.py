@@ -109,6 +109,7 @@ def detect_encoding(file_data: bytes) -> str:
     logging.debug(f"Detected encoding: {encoding} with confidence {result['confidence']}")
     return encoding
 
+
 def sanitize_html(html_content: str) -> str:
     """Sanitizes HTML content based on settings in config.yaml."""
     if not config or 'html_sanitization' not in config:

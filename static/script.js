@@ -185,7 +185,7 @@ function updateModelOptions() {
     }
 }
 
-// Add a message bubble to the chat history UI
+// --- Helper: Add a message bubble to the chat history UI ---
 function addMessage(role, content, isStreaming = false) {
     if (!chatHistory) return null;
 
@@ -197,9 +197,8 @@ function addMessage(role, content, isStreaming = false) {
         // Store the original content for copying
         messageDiv.dataset.rawContent = content;
         
-        // Parse Markdown and then sanitize the HTML for display
-        const markdownHtml = marked.parse(content);
-        finalContent = sanitizeHTML(markdownHtml);
+        // Directly use the content without sanitization, as it's already sanitized on the server-side
+        finalContent = content;
     } else { 
         // For user messages, escape the content to prevent XSS
         const escapedContent = content
@@ -230,7 +229,6 @@ function addMessage(role, content, isStreaming = false) {
     }
     return messageDiv;
 }
-
 
 // Append a chunk of text to the currently streaming bot message
 function appendStreamChunk(chunk) {
