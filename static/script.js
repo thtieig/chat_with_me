@@ -478,7 +478,7 @@ function updateAttachmentNames() {
             fileDiv.appendChild(fileNameSpan);
 
             const removeButton = document.createElement('button');
-            removeButton.textContent = 'Remove';
+            removeButton.innerHTML = '<i class="fas fa-trash"></i>';
             removeButton.onclick = () => {
                 combinedFiles.splice(index, 1);
                 updateAttachmentNames();
