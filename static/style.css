@@ -267,3 +267,31 @@ button#clear-button:disabled {
         min-width: 100%;
     }
 }
+
+.file-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.file-item span {
+    margin-right: 10px;
+}
+
+.file-item button {
+    background-color: #ff0000;
+    color: #ffffff;
+    border: none;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.file-item button:hover {
+    background-color: #cc0000;
+}

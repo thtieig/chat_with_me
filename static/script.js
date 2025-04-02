@@ -461,30 +461,60 @@ function clearChat() {
 }
 
 // Update the text displaying the names/count of attached files
+// Update the text displaying the names/count of attached files
 function updateAttachmentNames() {
     if (!attachmentNamesSpan) return;
     const numFiles = combinedFiles.length;
 
     if (numFiles === 0) {
-        attachmentNamesSpan.textContent = 'No files or folders added';
-    } else if (numFiles === 1) {
-        if (combinedFiles[0].webkitRelativePath) {
-            attachmentNamesSpan.textContent = `1 file added (from directory)`;
-        } else {
-            attachmentNamesSpan.textContent = `1 file added: ${combinedFiles[0].name}`;
-        }
+        attachmentNamesSpan.innerHTML = 'No files or folders added';
     } else {
-        const allFromDir = combinedFiles.every(f => f.webkitRelativePath);
-        if (allFromDir && combinedFiles[0].webkitRelativePath) {
-            const firstPath = combinedFiles[0].webkitRelativePath;
-            const dirName = firstPath.split('/')[0]; 
-            attachmentNamesSpan.textContent = `Directory '${dirName}' added (${numFiles} files)`;
-        } else {
-            const fileNames = combinedFiles.map(file => file.name).join(', ');
-            attachmentNamesSpan.textContent = `${numFiles} files added: ${fileNames}`;
-        }
+        const fileContainer = document.createElement('div');
+        fileContainer.className = 'file-container';
+
+        combinedFiles.forEach((file, index) => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-item';
+
+            const fileNameSpan = document.createElement('span');
+            fileNameSpan.textContent = file.name;
+            fileDiv.appendChild(fileNameSpan);
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove';
+            removeButton.onclick = () => {
+                combinedFiles.splice(index, 1);
+                updateAttachmentNames();
+            };
+            fileDiv.appendChild(removeButton);
+
+            fileContainer.appendChild(fileDiv);
+        });
+
+        attachmentNamesSpan.innerHTML = '';
+        attachmentNamesSpan.appendChild(fileContainer);
     }
 }
+
+// Add new files to the list
+function addNewFiles(newFiles) {
+    const uniqueNewFiles = newFiles.filter(newFile =>
+        !combinedFiles.some(existingFile =>
+            existingFile.name === newFile.name &&
+            existingFile.size === newFile.size &&
+            existingFile.lastModified === newFile.lastModified &&
+            (existingFile.webkitRelativePath || null) === (newFile.webkitRelativePath || null)
+        )
+    );
+    if (uniqueNewFiles.length > 0) {
+        console.log(`Adding ${uniqueNewFiles.length} new unique files.`);
+        combinedFiles.push(...uniqueNewFiles);
+    } else {
+        console.log("No new unique files to add (duplicates or empty list).");
+    }
+    updateAttachmentNames();
+}
+
 
 // Disable or enable form controls and drop zone
 function setFormDisabled(disabled) {
