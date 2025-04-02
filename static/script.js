@@ -28,6 +28,32 @@ function sanitizeHTML(htmlString) {
 }
 
 // --- Helper: Enhance code blocks for Prism ---
+// Add this helper function to extract code blocks from Markdown content
+function extractCodeBlocks(markdownContent) {
+    const codeBlockRegex = /```[\w]*\n([\s\S]*?)```/g;
+    const matches = [...markdownContent.matchAll(codeBlockRegex)];
+    
+    if (matches.length === 0) {
+        return null; // No code blocks found
+    }
+    
+    // If there's only one code block and it's substantial compared to the total content
+    if (matches.length === 1) {
+        const codeBlock = matches[0][0]; // Full match including ```
+        const codeContent = matches[0][1]; // Just the content inside ```
+        
+        // If the code block is at least 70% of the message or the message is mostly just the code block plus a small introduction
+        if (codeBlock.length > markdownContent.length * 0.7 || 
+            markdownContent.replace(codeBlock, '').trim().split(/\s+/).length < 15) {
+            return codeBlock;
+        }
+    }
+    
+    // Multiple code blocks or code block isn't the main content
+    return null;
+}
+
+// Update the enhanceCodeBlocks function to improve code block copying
 function enhanceCodeBlocks(element) {
     const codeBlocks = element.querySelectorAll('pre > code');
     const rawContent = element.dataset.rawContent || '';
@@ -36,13 +62,31 @@ function enhanceCodeBlocks(element) {
     if (rawContent && !element.querySelector('.copy-markdown-button')) {
         const copyFullBtn = document.createElement('button');
         copyFullBtn.className = 'copy-markdown-button';
-        copyFullBtn.textContent = 'Copy Full Message as Markdown';
+        
+        // Check if we should just extract code blocks
+        const extractedCode = extractCodeBlocks(rawContent);
+        if (extractedCode) {
+            copyFullBtn.textContent = 'Copy Code as Markdown';
+            copyFullBtn.setAttribute('data-extract-only', 'true');
+        } else {
+            copyFullBtn.textContent = 'Copy Full Message as Markdown';
+        }
+        
         copyFullBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(rawContent)
+            // Copy either just the code or the full message
+            const contentToCopy = copyFullBtn.getAttribute('data-extract-only') === 'true' 
+                ? extractedCode 
+                : rawContent;
+                
+            navigator.clipboard.writeText(contentToCopy)
                 .then(() => {
                     copyFullBtn.textContent = 'Copied!';
                     setTimeout(() => {
-                        copyFullBtn.textContent = 'Copy Full Message as Markdown';
+                        if (copyFullBtn.getAttribute('data-extract-only') === 'true') {
+                            copyFullBtn.textContent = 'Copy Code as Markdown';
+                        } else {
+                            copyFullBtn.textContent = 'Copy Full Message as Markdown';
+                        }
                     }, 2000);
                 })
                 .catch(err => {
