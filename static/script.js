@@ -28,23 +28,101 @@ function sanitizeHTML(htmlString) {
 }
 
 // --- Helper: Enhance code blocks for Prism ---
+// Add this helper function to extract code blocks from Markdown content
+function extractCodeBlocks(markdownContent) {
+    const codeBlockRegex = /```[\w]*\n([\s\S]*?)```/g;
+    const matches = [...markdownContent.matchAll(codeBlockRegex)];
+    
+    if (matches.length === 0) {
+        return null; // No code blocks found
+    }
+    
+    // If there's only one code block and it's substantial compared to the total content
+    if (matches.length === 1) {
+        const codeBlock = matches[0][0]; // Full match including ```
+        const codeContent = matches[0][1]; // Just the content inside ```
+        
+        // If the code block is at least 70% of the message or the message is mostly just the code block plus a small introduction
+        if (codeBlock.length > markdownContent.length * 0.7 || 
+            markdownContent.replace(codeBlock, '').trim().split(/\s+/).length < 15) {
+            return codeBlock;
+        }
+    }
+    
+    // Multiple code blocks or code block isn't the main content
+    return null;
+}
+
+// Update the enhanceCodeBlocks function to improve code block copying
 function enhanceCodeBlocks(element) {
     const codeBlocks = element.querySelectorAll('pre > code');
-    codeBlocks.forEach(codeBlock => {
+    const rawContent = element.dataset.rawContent || '';
+    
+    // Add a copy full message button if there's content to copy
+    if (rawContent && !element.querySelector('.copy-markdown-button')) {
+        const copyFullBtn = document.createElement('button');
+        copyFullBtn.className = 'copy-markdown-button';
+        
+        // Check if we should just extract code blocks
+        const extractedCode = extractCodeBlocks(rawContent);
+        if (extractedCode) {
+            copyFullBtn.textContent = 'Copy Code as Markdown';
+            copyFullBtn.setAttribute('data-extract-only', 'true');
+        } else {
+            copyFullBtn.textContent = 'Copy Full Message as Markdown';
+        }
+        
+        copyFullBtn.addEventListener('click', () => {
+            // Copy either just the code or the full message
+            const contentToCopy = copyFullBtn.getAttribute('data-extract-only') === 'true' 
+                ? extractedCode 
+                : rawContent;
+                
+            navigator.clipboard.writeText(contentToCopy)
+                .then(() => {
+                    copyFullBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        if (copyFullBtn.getAttribute('data-extract-only') === 'true') {
+                            copyFullBtn.textContent = 'Copy Code as Markdown';
+                        } else {
+                            copyFullBtn.textContent = 'Copy Full Message as Markdown';
+                        }
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy markdown: ', err);
+                });
+        });
+        element.appendChild(copyFullBtn);
+    }
+    
+    // Process each code block
+    codeBlocks.forEach((codeBlock, index) => {
+        // Add language class if missing
         if (!codeBlock.className.includes('language-')) {
             codeBlock.classList.add('language-plaintext');
         }
+        
+        // Get the language from the class
+        const langMatch = codeBlock.className.match(/language-(\w+)/);
+        const language = langMatch ? langMatch[1] : 'plaintext';
+        
         const preBlock = codeBlock.parentElement;
         if (!preBlock.parentElement.classList.contains('code-block')) {
             const wrapper = document.createElement('div');
             wrapper.className = 'code-block';
             preBlock.parentNode.insertBefore(wrapper, preBlock);
             wrapper.appendChild(preBlock);
+            
+            // Add copy button that includes markdown formatting
             const copyBtn = document.createElement('button');
             copyBtn.className = 'copy-button';
             copyBtn.textContent = 'Copy';
             copyBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(codeBlock.textContent)
+                // Get the code content
+                const codeContent = codeBlock.textContent;
+                
+                navigator.clipboard.writeText(codeContent)
                     .then(() => {
                         copyBtn.textContent = 'Copied!';
                         setTimeout(() => {
@@ -58,6 +136,7 @@ function enhanceCodeBlocks(element) {
             wrapper.appendChild(copyBtn);
         }
     });
+    
     if (window.Prism) {
         Prism.highlightAllUnder(element);
     }
@@ -103,7 +182,7 @@ function updateModelOptions() {
     }
 }
 
-// Add a message bubble to the chat history UI
+// --- Helper: Add a message bubble to the chat history UI ---
 function addMessage(role, content, isStreaming = false) {
     if (!chatHistory) return null;
 
@@ -112,10 +191,13 @@ function addMessage(role, content, isStreaming = false) {
 
     let finalContent = '';
     if (role === 'assistant') { 
-        const unsafeHtml = marked.parse(content); 
-        finalContent = sanitizeHTML(unsafeHtml); 
-        messageDiv.dataset.rawContent = content; 
+        // Store the original content for copying
+        messageDiv.dataset.rawContent = content;
+        
+        // Directly use the content without sanitization, as it's already sanitized on the server-side
+        finalContent = content;
     } else { 
+        // For user messages, escape the content to prevent XSS
         const escapedContent = content
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -130,6 +212,7 @@ function addMessage(role, content, isStreaming = false) {
     chatHistory.scrollTop = chatHistory.scrollHeight; 
     
     if (role === 'assistant') {
+        // After adding the message, enhance code blocks for Prism
         enhanceCodeBlocks(messageDiv);
     }
 
@@ -151,8 +234,9 @@ function appendStreamChunk(chunk) {
         currentRawContent += chunk;
         currentBotMessageDiv.dataset.rawContent = currentRawContent;
 
-        const unsafeHtml = marked.parse(currentRawContent);
-        const safeHtml = sanitizeHTML(unsafeHtml);
+        const markdownHtml = marked.parse(currentRawContent);
+        const safeHtml = sanitizeHTML(markdownHtml);
+        
         currentBotMessageDiv.innerHTML = safeHtml;
         enhanceCodeBlocks(currentBotMessageDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight; 
@@ -162,10 +246,11 @@ function appendStreamChunk(chunk) {
     }
 }
 
+
 // Finalize the bot message after streaming ends
 function finalizeBotMessage() {
     if (currentBotMessageDiv) {
-        const finalRawContent = currentBotMessageDiv.dataset.rawContent || ''; 
+        const finalRawContent = currentBotMessageDiv.dataset.rawMarkdown || ''; 
         const lastMsgIndex = conversationHistory.length - 1;
         if (lastMsgIndex >= 0 && conversationHistory[lastMsgIndex].role === 'assistant' && conversationHistory[lastMsgIndex].content === '...') {
             conversationHistory[lastMsgIndex].content = finalRawContent; 
@@ -175,14 +260,23 @@ function finalizeBotMessage() {
             conversationHistory.push({ role: 'assistant', content: finalRawContent });
         }
 
-        delete currentBotMessageDiv.dataset.rawContent;
+        // Keep the raw Markdown for potential copying but set a flag that it's finalized
+        currentBotMessageDiv.dataset.finalized = 'true';
         currentBotMessageDiv = null; 
         
         enhanceCodeBlocks(chatHistory.lastElementChild);
     } else {
         console.log("Finalize called but no active bot message div.");
     }
+    
+    // Replace the "Stop" button with the "Send" button
+    const stopButton = buttonGroup.querySelector('button.btn.btn-danger');
+    if (stopButton) {
+        buttonGroup.replaceChild(sendButton, stopButton);
+        sendButton.disabled = false;
+    }
 }
+
 
 // Handle the chat form submission
 async function handleFormSubmit(event) {
@@ -369,25 +463,82 @@ function updateAttachmentNames() {
     const numFiles = combinedFiles.length;
 
     if (numFiles === 0) {
-        attachmentNamesSpan.textContent = 'No files or folders added';
-    } else if (numFiles === 1) {
-        if (combinedFiles[0].webkitRelativePath) {
-            attachmentNamesSpan.textContent = `1 file added (from directory)`;
-        } else {
-            attachmentNamesSpan.textContent = `1 file added: ${combinedFiles[0].name}`;
-        }
+        attachmentNamesSpan.innerHTML = 'No files or folders added';
     } else {
-        const allFromDir = combinedFiles.every(f => f.webkitRelativePath);
-        if (allFromDir && combinedFiles[0].webkitRelativePath) {
-            const firstPath = combinedFiles[0].webkitRelativePath;
-            const dirName = firstPath.split('/')[0]; 
-            attachmentNamesSpan.textContent = `Directory '${dirName}' added (${numFiles} files)`;
-        } else {
-            const fileNames = combinedFiles.map(file => file.name).join(', ');
-            attachmentNamesSpan.textContent = `${numFiles} files added: ${fileNames}`;
-        }
+        const fileContainer = document.createElement('div');
+        fileContainer.className = 'file-container';
+
+        combinedFiles.forEach((file, index) => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-item';
+
+            const fileNameSpan = document.createElement('span');
+            fileNameSpan.textContent = file.name;
+            fileDiv.appendChild(fileNameSpan);
+
+            const removeButton = document.createElement('button');
+            removeButton.innerHTML = '<i class="fas fa-trash"></i>';
+            removeButton.onclick = () => {
+                combinedFiles.splice(index, 1);
+                updateAttachmentNames();
+            };
+            fileDiv.appendChild(removeButton);
+
+            fileDiv.addEventListener('click', (e) => {
+                if (e.target === removeButton) {
+                    // Do nothing, let the button's onclick handler delete the file
+                } else {
+                    // Prevent the file input from opening when clicking on an existing file
+                    e.stopPropagation();
+                }
+            });
+
+            fileContainer.appendChild(fileDiv);
+        });
+
+        attachmentNamesSpan.innerHTML = '';
+        attachmentNamesSpan.appendChild(fileContainer);
     }
 }
+
+dropZone.addEventListener('click', (e) => {
+    if (e.target === dropZone) {
+        // Only open the file input if the drop zone itself is clicked
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.multiple = true; 
+        fileInput.onchange = (event) => {
+            if (event.target.files.length > 0) {
+                const files = Array.from(event.target.files);
+                console.log(`Files selected via click: ${files.length}`);
+                addNewFiles(files);
+                updateAttachmentNames();
+            }
+        };
+        fileInput.click();
+    }
+});
+
+
+// Add new files to the list
+function addNewFiles(newFiles) {
+    const uniqueNewFiles = newFiles.filter(newFile =>
+        !combinedFiles.some(existingFile =>
+            existingFile.name === newFile.name &&
+            existingFile.size === newFile.size &&
+            existingFile.lastModified === newFile.lastModified &&
+            (existingFile.webkitRelativePath || null) === (newFile.webkitRelativePath || null)
+        )
+    );
+    if (uniqueNewFiles.length > 0) {
+        console.log(`Adding ${uniqueNewFiles.length} new unique files.`);
+        combinedFiles.push(...uniqueNewFiles);
+    } else {
+        console.log("No new unique files to add (duplicates or empty list).");
+    }
+    updateAttachmentNames();
+}
+
 
 // Disable or enable form controls and drop zone
 function setFormDisabled(disabled) {
@@ -477,22 +628,26 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
         e.preventDefault(); e.stopPropagation();
         if (!dropZone.contains(e.relatedTarget)) { dropZone.classList.remove('dragover'); }
     });
+    // Update dropZone event listeners to handle DataTransferItems
     dropZone.addEventListener('drop', async (e) => {
-        console.log("Drop event fired!");
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
         dropZone.classList.remove('dragover');
         attachmentNamesSpan.textContent = 'Processing dropped items...';
-
+    
         const items = e.dataTransfer.items;
-        const files = e.dataTransfer.files; 
+        const files = e.dataTransfer.files;
         const droppedFiles = [];
         const promises = [];
-
+    
         if (items && items.length > 0 && items[0].webkitGetAsEntry) {
-            console.log("Processing dropped items using webkitGetAsEntry API.");
             for (let i = 0; i < items.length; i++) {
                 const entry = items[i].webkitGetAsEntry();
-                if (entry) { promises.push(scanDirectoryEntry(entry)); }
+                if (entry) {
+                    promises.push(scanDirectoryEntry(entry));
+                } else {
+                    // If the item is not a directory entry, it's a file
+                    droppedFiles.push(files[i]);
+                }
             }
             try {
                 const fileArrays = await Promise.all(promises);
@@ -503,7 +658,7 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
             } catch (error) {
                 console.error('Error processing dropped items:', error);
                 addMessage('error', `Error processing dropped items: ${error.message}`);
-                updateAttachmentNames(); 
+                updateAttachmentNames();
             }
         } else if (files && files.length > 0) {
             console.log("Processing dropped files using fallback dataTransfer.files API.");
@@ -511,25 +666,64 @@ if (chatForm && messageInput && chatHistory && providerSelect && modelSelect && 
             updateAttachmentNames();
         } else {
             console.log("No items or files found in drop event.");
-            updateAttachmentNames(); 
+            updateAttachmentNames();
         }
     });
+   
+
+    // Function to scan a directory entry and get all files recursively
+    async function scanDirectoryEntry(entry) {
+        if (entry.isFile) {
+            return new Promise((resolve, reject) => {
+                entry.file(file => resolve([file]), err => reject(err));
+            });
+        } else if (entry.isDirectory) {
+            let reader = entry.createReader();
+            let allEntries = [];
+            return new Promise((resolve, reject) => {
+                const readEntries = async () => {
+                    reader.readEntries(async (entries) => {
+                        if (entries.length > 0) {
+                            const batchPromises = [];
+                            for (const subEntry of entries) {
+                                batchPromises.push(scanDirectoryEntry(subEntry));
+                            }
+                            try {
+                                const fileArrays = await Promise.all(batchPromises);
+                                fileArrays.forEach(fileArray => allEntries.push(...fileArray));
+                                readEntries();
+                            } catch (err) {
+                                reject(err);
+                            }
+                        } else {
+                            resolve(allEntries);
+                        }
+                    }, err => reject(err));
+                };
+                readEntries();
+            });
+        }
+        return [];
+    }
+
 
     dropZone.addEventListener('click', () => {
         if (sendButton.disabled) return; 
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.multiple = true;
+        fileInput.multiple = true; // Allow multiple file selection
         fileInput.onchange = (event) => {
             if (event.target.files.length > 0) {
-                console.log(`Files selected via click: ${event.target.files.length}`);
-                addNewFiles(Array.from(event.target.files));
+                const files = Array.from(event.target.files);
+                console.log(`Files selected via click: ${files.length}`);
+                addNewFiles(files);
                 updateAttachmentNames();
             }
         };
         fileInput.click();
     });
-
+    
+    
     fetchConfig();
 
 } else {
