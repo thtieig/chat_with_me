@@ -1,3 +1,4 @@
+// --- my_chat_app/static/script.js ---
 // Get the chat form and its elements
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
@@ -9,6 +10,7 @@ const sendButton = document.getElementById('send-button');
 const clearButton = document.getElementById('clear-button');
 const dropZone = document.getElementById('drop-zone');
 const attachmentNamesSpan = document.getElementById('attachment-names');
+const buttonGroup = document.querySelector('.button-group'); // Select the button group
 
 // State variables
 let currentBotMessageDiv = null;
@@ -232,14 +234,29 @@ async function handleFormSubmit(event) {
         });
     }
 
-    combinedFiles = []; 
     updateAttachmentNames(); 
 
     try {
+        const controller = new AbortController();
+        const signal = controller.signal;
+
         const response = await fetch('/chat', {
             method: 'POST',
-            body: formData 
+            body: formData,
+            signal: signal
         });
+
+        // Replace send button with stop button
+        const stopButton = document.createElement('button');
+        stopButton.textContent = 'Stop';
+        stopButton.classList.add('btn', 'btn-danger');
+        stopButton.onclick = () => {
+            controller.abort();
+            stopButton.disabled = true;
+            buttonGroup.replaceChild(sendButton, stopButton);
+            sendButton.disabled = false;
+        };
+        buttonGroup.replaceChild(stopButton, sendButton);
 
         if (!response.ok) {
             let errorMsg = `HTTP error! Status: ${response.status}`;

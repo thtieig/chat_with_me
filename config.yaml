@@ -1,3 +1,4 @@
+# --- my_chat_app/config.yaml ---
 # Application mode - determines default settings
 application_mode: "development"  # Options: "development" or "production"
 
