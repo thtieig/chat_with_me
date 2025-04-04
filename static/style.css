@@ -1,303 +1,431 @@
-/* --- my_chat_app/static/style.css --- */
-
 /* Global Styles */
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    font-family: sans-serif;
-    margin: 0;
-    background-color: #f4f7f6;
-    color: #333;
-    display: flex;
-    justify-content: center;
-    padding: 1em;
-    line-height: 1.5; 
+  font-family: Arial, sans-serif;
+  background-color: #f4f7f6;
+  display: flex;
+  justify-content: center;
+  padding: 1em; /* Padding around the container on desktop */
 }
 
 /* Container Styles */
 .container {
-    max-width: 800px;
-    width: 100%;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: 95vh; 
-    margin: 20px; /* Add margin */
-    padding: 20px; /* Add padding */
+  max-width: 800px;
+  width: 100%;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Keep overflow hidden */
+  display: flex;
+  flex-direction: column;
+  max-height: 95vh; /* Limit height on desktop */
+  margin: 20px; /* Spacing on desktop */
+  padding: 20px; /* Inner spacing on desktop */
 }
 
 /* Header Styles */
-h1 {
-    text-align: center;
-    color: #1a73e8;
-    margin: 0;
-    padding: 0.8em 0;
-    background-color: #e8f0fe;
-    font-size: 1.5em;
-    flex-shrink: 0; 
-    padding-bottom: 10px;
-    border-bottom: 1px solid #ddd;
+header {
+  background-color: #fff;
+  padding: 5px;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0; /* Prevent header from shrinking */
+  position: relative; /* Needed for potential absolute positioning of children if required */
+}
+
+header h1 {
+  text-align: center;
+  color: #1a73e8;
+  margin: 0;
+  font-size: 3rem;
+  padding: 0.1em;
+}
+
+.rainbow-title {
+  background: linear-gradient(to right, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff69b4, #ff00ff, #800080);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Chat Area Styles */
 .chat-area {
-    flex-grow: 1; 
-    height: 50vh; 
-    overflow-y: auto;
-    border: 1px solid #eee;
-    margin-bottom: 20px; /* Add margin */
-    padding: 20px; /* Add padding */
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  flex-grow: 1; /* Allow chat area to take available space */
+  /* height: 50vh; Removed - Let flex-grow manage height */
+  overflow-y: auto; /* Enable scrolling */
+  border: 1px solid #eee;
+  margin-bottom: 20px; /* Space below chat on desktop */
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 #chat-history {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
 }
 
 /* Message Styles */
 .message {
-    padding: 0.8em 1.2em;
-    border-radius: 15px;
-    max-width: 85%; 
-    word-wrap: break-word;
-    line-height: 1.4;
+  padding: 0.8em 1.2em;
+  border-radius: 15px;
+  max-width: 85%;
+  word-wrap: break-word;
+  line-height: 1.4;
 }
 
 .user {
-    background-color: #d1e7fd;
-    align-self: flex-end;
-    border-bottom-right-radius: 5px;
+  background-color: #d1e7fd;
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
 }
 
 .bot {
-    background-color: #e9ecef;
-    align-self: flex-start;
-    border-bottom-left-radius: 5px;
+  background-color: #e9ecef;
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
 }
 
 .error {
-    color: #721c24; 
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 4px; 
-    align-self: stretch; 
-    text-align: center;
-    margin: 0.5em 0; 
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  align-self: stretch;
+  text-align: center;
+  margin: 0.5em 0;
 }
 
 /* Input Area Styles */
 .input-area {
-    border-top: 1px solid #eee;
-    margin-top: 20px; /* Add margin */
-    flex-shrink: 0; 
-    padding: 20px; /* Add padding */
+  border-top: 1px solid #eee;
+  margin-top: 20px; /* Space above input on desktop */
+  flex-shrink: 0; /* Prevent input area from shrinking */
+  padding: 20px; /* Padding inside input area */
 }
 
 #chat-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
 }
 
+/* Default Settings Layout (Desktop) */
 .settings {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1em;
-    padding-bottom: 0em; 
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
 }
 
-.control-group {
-    flex: 1;
-    min-width: 150px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3em;
-}
-
-label {
-    font-weight: bold;
-    font-size: 0.9em;
-    color: #555;
-    margin-bottom: 0.2em; 
-}
-
-select, textarea {
-    width: 100%;
-    padding: 0.6em;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
-    font-size: 1em;
-    background-color: #fff; 
-}
-
-textarea {
-    resize: vertical;
-    min-height: 60px; 
-}
-
-.message-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5em; 
-    margin-top: 1em;
-}
-
-.attachment-area {
-    
-}
-
-/* Drop Zone Styles */
+/* Default Drop Zone (Desktop) */
 #drop-zone {
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    padding: 20px; 
-    text-align: center;
-    color: #aaa;
-    background-color: #f9f9f9;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-    margin-top: 0.5em; 
-    cursor: pointer; 
-}
-
-#drop-zone p {
-    margin: 0 0 8px 0; 
-    font-size: 1.0em; 
-    pointer-events: none;
-    color: #777; 
-}
-
-#drop-zone span#attachment-names {
-    font-size: 0.85em; 
-    color: #555; 
-    display: block;
-    margin-top: 5px;
-    min-height: 1.2em;
-    word-wrap: break-word;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #aaa;
+  background-color: #f9f9f9;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  margin-top: 0.5em;
+  cursor: pointer;
 }
 
 #drop-zone.dragover {
-    border-color: #1a73e8;
-    background-color: #e8f0fe;
+  border-color: #1a73e8;
+  background-color: #e8f0fe;
+}
+
+.control-group {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+label {
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #555;
+  margin-bottom: 0.2em;
+}
+
+select, textarea {
+  width: 100%;
+  padding: 0.6em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  /* box-sizing: border-box; Inherited from '*' */
+  font-size: 1em;
+  background-color: #fff;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
 }
 
 /* Button Styles */
 .button-group {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5em;
-    margin-top: 1em;
+  display: flex;
+  justify-content: space-between; /* Align space-between on desktop */
+  gap: 0.5em;
+  margin-top: 1em;
+  flex-wrap: wrap; /* Allow buttons to wrap to a new line */
 }
+
+.button-group button {
+  padding: 10px;
+  font-size: 16px;
+  width: 48%; /* Set a width for the buttons */
+  flex-grow: 1; /* Allow buttons to grow */
+}
+
 
 button {
-    padding: 0.7em 1.5em;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
+  padding: 0.7em 1.5em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s ease;
 }
 
-button#send-button {
-    background-color: #1a73e8;
-    color: white;
+#send-button {
+  background-color: #1a73e8;
+  color: white;
+}
+#send-button:hover { background-color: #1765cc; }
+#send-button:disabled { background-color: #a0c3f0; cursor: not-allowed; }
+
+#clear-button {
+  background-color: #6c757d;
+  color: white;
+}
+#clear-button:hover { background-color: #5a6268; }
+#clear-button:disabled { background-color: #adb5bd; cursor: not-allowed; }
+
+
+/* Hide Mobile Elements by Default */
+#mobile-dropzone-button,
+#mobile-settings-button,
+.mobile-action-icons {
+  display: none;
 }
 
-button#send-button:hover {
-    background-color: #1765cc;
-}
+/* Accordion Styles (Placeholder - Adjust if using a library) */
+.accordion { /* Visible by default on desktop */ }
+.accordion-button { width: 100%; text-align: left; }
+.accordion-body { padding: 10px; }
 
-button#send-button:disabled {
-    background-color: #a0c3f0;
-    cursor: not-allowed;
-}
 
-button#clear-button {
-    background-color: #6c757d;
-    color: white;
-}
-
-button#clear-button:hover {
-    background-color: #5a6268;
-}
-
-button#clear-button:disabled {
-    background-color: #adb5bd;
-    cursor: not-allowed;} 
-
-.rainbow-title {
-    background: linear-gradient(to right, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff69b4, #ff00ff, #800080);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-size: 3rem;
-}
-
-/* Responsive Design */
+/* ====================================== */
+/* Responsive Design - Tablets and Mobile */
+/* ====================================== */
 @media (max-width: 768px) {
-    .container {
-        width: 90%;
+
+  body {
+    padding: 0; /* Remove body padding for edge-to-edge */
+  }
+
+  .container {
+    width: 100%; /* Full width */
+    height: 100vh; /* Full viewport height */
+    max-height: 100vh; /* Override desktop max-height */
+    margin: 0; /* Remove margin */
+    padding: 0; /* Remove container padding, handle padding in children */
+    border-radius: 0; /* Optional: remove radius for full screen */
+    box-shadow: none; /* Optional: remove shadow */
+    overflow: hidden; /* Crucial: Prevent body scroll */
+  }
+
+  /* --- Fixed Header --- */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10; /* Ensure header is above content */
+    padding: 10px 15px; /* Adjust padding */
+    background-color: #fff; /* Ensure background covers content */
+    border-bottom: 1px solid #ccc;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    padding: 0.2em 0; /* Adjust padding */
+    text-align: left; /* Align title left on mobile */
+  }
+
+  /* --- Mobile Action Icons (Top Right) --- */
+  .mobile-action-icons {
+    display: flex; /* Show the container */
+    gap: 10px; /* Space between icons */
+    position: absolute; /* Position relative to the header */
+    top: 50%; /* Center vertically within header */
+    right: 15px; /* Position from the right edge */
+    transform: translateY(-50%); /* Fine-tune vertical centering */
+    z-index: 11; /* Above header content if needed */
+  }
+
+  #mobile-settings-button,
+  #mobile-dropzone-button {
+    display: block; /* Show the buttons */
+    width: 36px;   /* Icon button size */
+    height: 36px;  /* Icon button size */
+    padding: 8px; /* Adjust padding for icon */
+    font-size: 16px; /* Icon size */
+    border-radius: 50%; /* Circular buttons */
+    background-color: #eee; /* Example background */
+    color: #555; /* Example icon color */
+    border: 1px solid #ccc;
+    flex-shrink: 0; /* Prevent shrinking */
+    line-height: 1; /* Ensure icon aligns well */
+    text-align: center;
+  }
+  /* Add hover/active states if desired */
+  #mobile-settings-button:hover,
+  #mobile-dropzone-button:hover {
+      background-color: #ddd;
+  }
+
+
+  /* --- Scrolling Chat Area --- */
+  .chat-area {
+    flex-grow: 0; /* Changed from 1 to 0 */
+    margin-top: 60px; /* Approx Header Height + padding */
+    margin-bottom: 120px; /* Leave space for input area */
+    border-radius: 0;
+    box-shadow: none;
+    border-left: none; /* Remove side borders */
+    border-right: none; /* Remove side borders */
+    padding: 15px; /* Inner padding */
+    height: calc(100vh - 180px); /* Set a fixed height */
+    overflow-y: auto; /* Enable scrolling */
+  }
+
+  /* --- Input Area (Scrolls with Chat) --- */
+  .input-area {
+    padding: 15px; /* Adjust padding */
+    margin-top: 0; /* Reset margin top */
+    border-top: 1px solid #eee;
+    /* Input area is now part of the scrollable content above the fixed buttons */
+  }
+
+  /* --- Hide Desktop Elements / Show Mobile Alternatives --- */
+  .settings, /* Hide original settings flex container */
+  #drop-zone { /* Hide original drop zone */
+    display: none;
+  }
+
+  /* Show Drop Zone via toggle */
+   #drop-zone.show-mobile { /* Use a specific class for mobile toggle */
+      display: block; /* Show drop zone when toggled */
+      padding: 15px;
+      margin-top: 10px;
+      margin-bottom: 10px; /* Space below dropzone */
+      border-radius: 4px;
     }
+
+  /* Show Settings via Accordion/Toggle */
+  .accordion {
+      display: block; /* Show accordion placeholder */
+      margin-bottom: 10px;
+  }
+  /* Styles for when settings ARE shown (e.g., inside accordion body) */
+  .settings.show-mobile {
+      display: flex; /* Use flex again when shown */
+      flex-direction: column; /* Stack controls vertically */
+      gap: 0.8em;
+  }
+  .control-group {
+      min-width: 100%; /* Full width within settings area */
+      margin-bottom: 0; /* Remove bottom margin */
+  }
+
+  /* --- Fixed Button Group (Bottom) --- */
+  .button-group {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10; /* Ensure buttons are above content */
+    padding: 10px 15px; /* Adjust padding */
+    background-color: #f8f9fa; /* Slightly off-white background */
+    border-top: 1px solid #ccc;
+    justify-content: space-between; /* Space out buttons */
+    margin-top: 0; /* Remove default margin */
+  }
+
+  .button-group button { /* Style main Send/Clear buttons */
+    padding: 10px;
+    font-size: 16px;
+    flex-grow: 1; /* Allow buttons to grow */
+    max-width: 48%; /* Limit button width slightly less than half */
+  }
+
+   /* Adjust the accordion-button to left-align for mobile */
+  .accordion-button {
+    text-align: left;
+  }
 }
 
+
+/* ====================================== */
+/* Responsive Design - Smaller Phones     */
+/* ====================================== */
 @media (max-width: 480px) {
-    .container {
-        width: 95%;
-    }
-    .chat-area {
-        height: 40vh;
-    }
-    .input-area {
-        flex-direction: column;
-    }
-    .settings {
-        flex-direction: column;
-    }
-    .control-group {
-        min-width: 100%;
-    }
-}
+  header {
+    padding: 8px 10px; /* Reduce header padding */
+  }
 
-.file-container {
-    display: flex;
-    flex-direction: column;
-}
+  header h1 {
+    font-size: 1.3rem; /* Slightly smaller title */
+  }
 
-.file-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 5px;
-}
+  /* Adjust icon position slightly if needed */
+  .mobile-action-icons {
+      right: 10px;
+  }
+   #mobile-settings-button,
+   #mobile-dropzone-button {
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+      font-size: 14px;
+   }
 
-.file-item span {
-    margin-right: 10px;
-}
+  /* Adjust chat area margins based on potentially smaller header/footer */
+  .chat-area {
+    margin-top: 50px; /* Adjust slightly */
+    margin-bottom: 115px; /* Adjust slightly */
+    height: calc(100vh - 165px); /* Adjusted fixed height */
+    padding: 10px; /* Reduce padding */
+ }
 
-.file-item button {
-    background-color: #ff0000;
-    color: #ffffff;
-    border: none;
-    padding: 2px 5px;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 5px;
-}
+  .message {
+     max-width: 90%; /* Allow messages to be slightly wider */
+     padding: 0.6em 1em; /* Adjust message padding */
+  }
 
-.file-item button:hover {
-    background-color: #cc0000;
-}
+  .input-area {
+      padding: 10px; /* Reduce padding */
+  }
+   textarea {
+       min-height: 50px; /* Smaller min-height */
+   }
 
-.file-item button i {
-    font-size: 12px;
-    color: #ffffff;
+  .button-group {
+      padding: 8px 10px; /* Reduce padding */
+  }
+
+  .button-group button {
+      padding: 8px;
+      font-size: 14px;
+  }
 }
