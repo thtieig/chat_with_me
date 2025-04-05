@@ -15,12 +15,12 @@ body {
 
 /* Container Styles */
 .container {
-  max-width: 800px;
+  max-width: 800px; /* Or whatever your max-width is */
   width: 100%;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  overflow: hidden; /* Keep overflow hidden */
+  overflow: visible; /* Allow content to overflow the container */
   display: flex;
   flex-direction: column;
   max-height: 95vh; /* Limit height on desktop */
@@ -53,15 +53,33 @@ header h1 {
 
 /* Chat Area Styles */
 .chat-area {
-  flex-grow: 1; /* Allow chat area to take available space */
-  /* height: 50vh; Removed - Let flex-grow manage height */
-  overflow-y: auto; /* Enable scrolling */
+  flex-grow: 1; /* Allow the chat area to take up remaining space */
+  overflow: auto !important; /* Enable scrolling and override any competing styles */
   border: 1px solid #eee;
-  margin-bottom: 20px; /* Space below chat on desktop */
+  margin-bottom: 20px;
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  resize: both; /* Enables resizing */
+  min-height: 100px; /* Minimum height to allow resizing */
+  max-height: 80vh; /* Maximum height */
+}
+
+/* For cross-browser compatibility - MODIFIED to allow scrollbars */
+.chat-area {
+  -ms-overflow-style: auto; /* IE and Edge - show scrollbars */
+  scrollbar-width: auto; /* Firefox - show scrollbars */
+}
+
+.chat-area::-webkit-scrollbar {
+  display: block; /* Safari and Chrome - show scrollbars */
+  width: 8px; /* Width of the scrollbar */
+}
+
+.chat-area::-webkit-scrollbar-thumb {
+  background-color: #ccc; /* Scrollbar color */
+  border-radius: 4px;
 }
 
 #chat-history {
@@ -160,7 +178,6 @@ select, textarea {
   padding: 0.6em;
   border: 1px solid #ccc;
   border-radius: 4px;
-  /* box-sizing: border-box; Inherited from '*' */
   font-size: 1em;
   background-color: #fff;
 }
@@ -186,7 +203,6 @@ textarea {
   flex-grow: 1; /* Allow buttons to grow */
 }
 
-
 button {
   padding: 0.7em 1.5em;
   border: none;
@@ -210,7 +226,6 @@ button {
 #clear-button:hover { background-color: #5a6268; }
 #clear-button:disabled { background-color: #adb5bd; cursor: not-allowed; }
 
-
 /* Hide Mobile Elements by Default */
 #mobile-dropzone-button,
 #mobile-settings-button,
@@ -219,7 +234,7 @@ button {
 }
 
 /* Accordion Styles (Placeholder - Adjust if using a library) */
-.accordion { /* Visible by default on desktop */ }
+.accordion { }
 .accordion-button { width: 100%; text-align: left; }
 .accordion-body { padding: 10px; }
 
@@ -237,11 +252,11 @@ button {
     width: 100%; /* Full width */
     height: 100vh; /* Full viewport height */
     max-height: 100vh; /* Override desktop max-height */
+    overflow: hidden; /* Prevent body scroll */
     margin: 0; /* Remove margin */
     padding: 0; /* Remove container padding, handle padding in children */
-    border-radius: 0; /* Optional: remove radius for full screen */
-    box-shadow: none; /* Optional: remove shadow */
-    overflow: hidden; /* Crucial: Prevent body scroll */
+    border-radius: 0;
+    box-shadow: none;
   }
 
   /* --- Fixed Header --- */
@@ -250,102 +265,107 @@ button {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 10; /* Ensure header is above content */
-    padding: 10px 15px; /* Adjust padding */
-    background-color: #fff; /* Ensure background covers content */
+    z-index: 10;
+    padding: 10px 15px;
+    background-color: #fff;
     border-bottom: 1px solid #ccc;
   }
 
   header h1 {
     font-size: 1.5rem;
-    padding: 0.2em 0; /* Adjust padding */
-    text-align: left; /* Align title left on mobile */
+    padding: 0.2em 0;
+    text-align: left;
   }
 
   /* --- Mobile Action Icons (Top Right) --- */
   .mobile-action-icons {
-    display: flex; /* Show the container */
-    gap: 10px; /* Space between icons */
-    position: absolute; /* Position relative to the header */
-    top: 50%; /* Center vertically within header */
-    right: 15px; /* Position from the right edge */
-    transform: translateY(-50%); /* Fine-tune vertical centering */
-    z-index: 11; /* Above header content if needed */
+    display: flex;
+    gap: 10px;
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    z-index: 11;
   }
 
   #mobile-settings-button,
   #mobile-dropzone-button {
-    display: block; /* Show the buttons */
-    width: 36px;   /* Icon button size */
-    height: 36px;  /* Icon button size */
-    padding: 8px; /* Adjust padding for icon */
-    font-size: 16px; /* Icon size */
-    border-radius: 50%; /* Circular buttons */
-    background-color: #eee; /* Example background */
-    color: #555; /* Example icon color */
+    display: block;
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 50%;
+    background-color: #eee;
+    color: #555;
     border: 1px solid #ccc;
-    flex-shrink: 0; /* Prevent shrinking */
-    line-height: 1; /* Ensure icon aligns well */
+    flex-shrink: 0;
+    line-height: 1;
     text-align: center;
   }
-  /* Add hover/active states if desired */
   #mobile-settings-button:hover,
   #mobile-dropzone-button:hover {
       background-color: #ddd;
   }
 
-
   /* --- Scrolling Chat Area --- */
   .chat-area {
-    flex-grow: 0; /* Changed from 1 to 0 */
-    margin-top: 60px; /* Approx Header Height + padding */
-    margin-bottom: 120px; /* Leave space for input area */
+    flex-grow: 1;
+    margin-top: 60px; /* Header height + padding */
+    margin-bottom: 0; /* Remove gap so chat touches the input */
     border-radius: 0;
     box-shadow: none;
-    border-left: none; /* Remove side borders */
-    border-right: none; /* Remove side borders */
-    padding: 15px; /* Inner padding */
-    height: calc(100vh - 180px); /* Set a fixed height */
-    overflow-y: auto; /* Enable scrolling */
+    border-left: none;
+    border-right: none;
+    padding: 15px;
+    height: auto;
+    max-height: calc(100vh - 180px); /* 60 (header) + 60 (input) + 60 (button group) = 180 */
+    overflow-y: auto !important;
+    resize: none;
+    /* Added extra bottom padding so the last message isn't hidden */
+    padding-bottom: 60px;
   }
 
-  /* --- Input Area (Scrolls with Chat) --- */
+  /* --- Input Area for Mobile --- */
   .input-area {
-    padding: 15px; /* Adjust padding */
-    margin-top: 0; /* Reset margin top */
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    margin-top: 0;
+    background-color: #fff;
     border-top: 1px solid #eee;
-    /* Input area is now part of the scrollable content above the fixed buttons */
+    z-index: 9;
   }
 
   /* --- Hide Desktop Elements / Show Mobile Alternatives --- */
-  .settings, /* Hide original settings flex container */
-  #drop-zone { /* Hide original drop zone */
+  .settings,
+  #drop-zone {
     display: none;
   }
 
-  /* Show Drop Zone via toggle */
-   #drop-zone.show-mobile { /* Use a specific class for mobile toggle */
-      display: block; /* Show drop zone when toggled */
+   #drop-zone.show-mobile {
+      display: block;
       padding: 15px;
       margin-top: 10px;
-      margin-bottom: 10px; /* Space below dropzone */
+      margin-bottom: 10px;
       border-radius: 4px;
     }
 
-  /* Show Settings via Accordion/Toggle */
   .accordion {
-      display: block; /* Show accordion placeholder */
+      display: block;
       margin-bottom: 10px;
   }
-  /* Styles for when settings ARE shown (e.g., inside accordion body) */
+
   .settings.show-mobile {
-      display: flex; /* Use flex again when shown */
-      flex-direction: column; /* Stack controls vertically */
+      display: flex;
+      flex-direction: column;
       gap: 0.8em;
   }
   .control-group {
-      min-width: 100%; /* Full width within settings area */
-      margin-bottom: 0; /* Remove bottom margin */
+      min-width: 100%;
+      margin-bottom: 0;
   }
 
   /* --- Fixed Button Group (Bottom) --- */
@@ -354,41 +374,43 @@ button {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 10; /* Ensure buttons are above content */
-    padding: 10px 15px; /* Adjust padding */
-    background-color: #f8f9fa; /* Slightly off-white background */
+    z-index: 10;
+    padding: 10px 15px;
+    background-color: #f8f9fa;
     border-top: 1px solid #ccc;
-    justify-content: space-between; /* Space out buttons */
-    margin-top: 0; /* Remove default margin */
+    justify-content: space-between;
+    margin-top: 0;
   }
 
-  .button-group button { /* Style main Send/Clear buttons */
+  /* Add proper padding to ensure textarea content is fully visible */
+  textarea {
+    padding-bottom: 10px;
+  }
+
+  .button-group button {
     padding: 10px;
     font-size: 16px;
-    flex-grow: 1; /* Allow buttons to grow */
-    max-width: 48%; /* Limit button width slightly less than half */
+    flex-grow: 1;
+    max-width: 48%;
   }
 
-   /* Adjust the accordion-button to left-align for mobile */
   .accordion-button {
     text-align: left;
   }
 }
-
 
 /* ====================================== */
 /* Responsive Design - Smaller Phones     */
 /* ====================================== */
 @media (max-width: 480px) {
   header {
-    padding: 8px 10px; /* Reduce header padding */
+    padding: 8px 10px;
   }
 
   header h1 {
-    font-size: 1.3rem; /* Slightly smaller title */
+    font-size: 1.3rem;
   }
 
-  /* Adjust icon position slightly if needed */
   .mobile-action-icons {
       right: 10px;
   }
@@ -400,28 +422,36 @@ button {
       font-size: 14px;
    }
 
-  /* Adjust chat area margins based on potentially smaller header/footer */
   .chat-area {
-    margin-top: 50px; /* Adjust slightly */
-    margin-bottom: 115px; /* Adjust slightly */
-    height: calc(100vh - 165px); /* Adjusted fixed height */
-    padding: 10px; /* Reduce padding */
- }
-
-  .message {
-     max-width: 90%; /* Allow messages to be slightly wider */
-     padding: 0.6em 1em; /* Adjust message padding */
+    margin-top: 50px;
+    margin-bottom: 0;
+    max-height: calc(100vh - 180px);
+    padding-bottom: 60px;
   }
 
   .input-area {
-      padding: 10px; /* Reduce padding */
+    bottom: 55px;
+  }
+
+  textarea {
+    min-height: 50px;
+    width: 100%;
+  }
+
+  .message {
+     max-width: 90%;
+     padding: 0.6em 1em;
+  }
+
+  .input-area {
+      padding: 10px;
   }
    textarea {
-       min-height: 50px; /* Smaller min-height */
+       min-height: 50px;
    }
 
   .button-group {
-      padding: 8px 10px; /* Reduce padding */
+      padding: 8px 10px;
   }
 
   .button-group button {
