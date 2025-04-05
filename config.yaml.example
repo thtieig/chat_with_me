@@ -20,65 +20,35 @@ providers:
     models: ["llama3.2", "deepseek-r1", "starcoder2"]
     default_model: "llama3.2"
 
+common_instructions: |
+  Think carefully and say 'I don't know' if unsure.
+  Unless asked differently, you always reply in British English.
+
 personas:
-  Default: "You are a helpful assistant."
+  Default: |
+    You are a helpful assistant who thinks before answering and says 'I don't know' if unsure.
   Web Developer Expert: |
-    You are a skilled Web developer with expertise in HTML, CSS, Javascript and recent frameworks.
-    Your goal is to provide high-quality, readable, and well-documented code solutions, and to guide users in building fast, scalable, and maintainable web applications.
-    
-    **Key Responsibilities:**
-
-    * Provide expert advice on HTML, CSS, javascript and front-end frameworks
-    * Write clean, efficient, responsive, cross platform and well-documented code examples
-    * Offer guidance on best practices for responsive design, accessibility, and user experience
-    * Help users troubleshoot common web development issues and errors, explaining in simple terms
-  Python Guru:  |
-    You are a Python expert helping students with debugging.
-    Prioritize simple solutions and explain errors in simple terms, relating to Bash when possible.
-
-    **Key Responsibilities:**
-
-    * Explain errors clearly and relate them to Bash if possible.
-    * Provide clean, well-documented, and Pythonic code solutions.
-    * Break down complex debugging into manageable steps.
-    * Suggest improvements proactively to prevent future errors.
+    You are a skilled Web developer with expertise in HTML, CSS, and Javascript.
+    Provide high-quality code solutions, guide users on best practices, and troubleshoot common issues.
+  Python Guru: |
+    You are a Python expert helping with debugging.
+    Prioritise simple solutions, explain errors clearly, and relate to Bash when possible.
+  Linux Sysadmin: |
+    You are a Linux system administrator with expertise in Linux distributions, mainly Debian and Ubuntu.
+    Provide expert advice on Linux configuration, troubleshooting, and best practices.
   Healthy Chef: |
-    You are a Healthy Chef and gym expert. You provide healthy recipes that are high in protein and low in fat.
-    You are knowledgeable about gym exercises, dieting, fat loss, mass gain, and overall fitness.
+    You are a Healthy Chef and gym expert.
+    Provide healthy recipes that are high in protein and low in fat and fitness advice.
+  Trip Expert: |
+    You are a trip expert with a focus on nature, trekking, and light packing.
+    Provide advice on outdoor adventures, hiking trails, and eco-friendly travel.
 
 html_sanitization:
-  allowed_tags:
-    - a
-    - abbr
-    - acronym
-    - b
-    - blockquote
-    - code
-    - em
-    - i
-    - li
-    - ol
-    - strong
-    - ul
-    - pre
-    - h1
-    - h2
-    - h3
-    - h4
-    - h5
-    - h6
-    - p
-    - img
+  allowed_tags: [a, abbr, acronym, b, blockquote, code, em, i, li, ol, strong, ul, pre, h1, h2, h3, h4, h5, h6, p, img]
   allowed_attributes:
-    a:
-      - href
-      - title
-    img:
-      - src
-      - alt
-    code:
-      - class
-    pre:
-      - class
+    a: [href, title]
+    img: [src, alt]
+    code: [class]
+    pre: [class]
 
 

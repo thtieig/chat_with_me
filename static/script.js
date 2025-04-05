@@ -1,3 +1,5 @@
+
+
 // Get the chat form and its elements
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');

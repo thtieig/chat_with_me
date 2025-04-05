@@ -85,22 +85,28 @@ def configure_ollama_client(provider_config):
 # --- Persona and Sanitization ---
 
 def get_persona_message(persona_name: str, config_data: dict) -> str:
-    """Retrieves the system prompt for a given persona name from config."""
+    """Retrieves the system prompt for a given persona name, appending shared guidelines."""
     if not config_data or 'personas' not in config_data:
         logging.warning("Personas configuration is missing or invalid. Using default.")
         return "You are a helpful assistant."
 
     persona_messages = config_data.get('personas', {})
+    shared_guidelines = config_data.get('common_instructions', '')
+
     # Find the first persona listed as the default if 'Default' doesn't exist
     default_persona_name = next(iter(persona_messages.keys()), None) if persona_messages else None
     default_message = "You are a helpful assistant."
     if default_persona_name:
         default_message = persona_messages.get(default_persona_name, default_message)
 
-    # Get the message for the requested persona, fall back to 'Default', then the first one, then the hardcoded default
+    # Get the message for the requested persona, or fallback
     message = persona_messages.get(persona_name, persona_messages.get('Default', default_message))
-    logging.info(f"Using persona '{persona_name}': {message[:80]}...") # Log snippet
-    return message
+
+    # Append shared guidelines, with clean spacing
+    full_message = f"{message.strip()}\n\n{shared_guidelines.strip()}" if shared_guidelines else message
+
+    logging.info(f"Using persona '{persona_name}': {full_message[:80]}...")
+    return full_message
 
 def detect_encoding(file_data: bytes) -> str:
     """Detects the encoding of file data using chardet."""
