@@ -1,4 +1,4 @@
-...# Chat With Me (Flask Version)
+# Chat With Me (Flask Version)
 =====================================
 
 A versatile AI chatbot web application built with Python (Flask) for the backend and standard HTML, CSS, and JavaScript for the frontend.
@@ -40,24 +40,30 @@ chat_with_me/
 ------------
 
 1.  Clone the repository:
-    ```bash
+```bash
 git clone https://thtieig@bitbucket.org/thtieig/chat_with_me.git
 cd chat_with_me
 ```
 
 2.  Create a virtual environment (recommended):
-    ```bash
+```bash
 python -m venv venv
 source venv/bin/activate  
 ```
 
 3.  Install dependencies:
-    ```bash
+```bash
 pip install -r requirements.txt
 ```
 
 ## Configuration
 -------------
+
+The application is configured using the `config.yaml` file, which is located in the project's root directory. This file contains settings for the application, including API keys, providers, models, and personas.
+
+### Config File Location
+
+The `config.yaml` file is located in the project's root directory. You can find it at the same level as the `app.py` and `requirements.txt` files.
 
 ### API Keys
 
@@ -67,12 +73,32 @@ IONOS_API_KEY=your_ionos_api_key_here
 GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-### Providers, Models, Personas and Environment
+### Providers, Models, Personas, and Environment
 
-Rename the `config.yaml.example` file to `config.yaml`.   
-Add or remove AI providers, update the list of available models for each provider, define or change AI personas (system prompts). Here you can also set `application_mode` to `production` once happy with the script.   
+The `config.yaml` file contains settings for the providers, models, personas, and environment. You can add or remove providers, update the list of available models for each provider, define or change AI personas (system prompts), and set the `application_mode` to `production` once you're happy with the script.
 
-The application supports both *development* and *production* environments. You can configure the environment by modifying the `config.yaml` file.
+#### Common Instructions
+
+The `common_instructions` section in the `config.yaml` file defines a set of common instructions that are added to each persona. These instructions are used to guide the AI's behavior and response style. For example, the `common_instructions` section might contain the following:
+```yml
+common_instructions: |
+  Think carefully and say 'I don't know' if unsure.
+  Unless asked differently, you always reply in British English.
+```
+This means that every persona will be prefixed with these instructions, which helps to ensure consistency in the AI's responses.
+
+#### Personas
+
+The `personas` section in the `config.yaml` file defines a list of available personas. Each persona is a system prompt that defines the AI's personality or role. For example, the `personas` section might contain the following:
+```yml
+personas:
+  Default: |
+    You are a helpful assistant who thinks before answering and says 'I don't know' if unsure.
+  Web Developer Expert: |
+    You are a skilled Web developer with expertise in HTML, CSS, and Javascript.
+    Provide high-quality code solutions, guide users on best practices, and troubleshoot common issues.
+```
+These personas can be selected in the UI, and the AI will respond accordingly.
 
 #### Development Environment
 
@@ -86,17 +112,16 @@ The application supports both *development* and *production* environments. You c
 *   This will disable debug mode and log chat content to a file.
 *   Access is available on `0.0.0.0`.
 
-
 ## Running the Application
 -------------------------
 
 1.  Activate your virtual environment (if you created one):
-    ```bash
+```bash
 source venv/bin/activate  
 ```
 
 2.  Run the Flask development server:
-    ```bash
+```bash
 python app.py
 ```
 
@@ -120,4 +145,4 @@ Please ensure you have the necessary API keys and configure them properly in the
 
 ## License
 -------
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). 
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
