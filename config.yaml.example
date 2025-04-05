@@ -47,38 +47,11 @@ personas:
     You are knowledgeable about gym exercises, dieting, fat loss, mass gain, and overall fitness.
 
 html_sanitization:
-  allowed_tags:
-    - a
-    - abbr
-    - acronym
-    - b
-    - blockquote
-    - code
-    - em
-    - i
-    - li
-    - ol
-    - strong
-    - ul
-    - pre
-    - h1
-    - h2
-    - h3
-    - h4
-    - h5
-    - h6
-    - p
-    - img
+  allowed_tags: [a, abbr, acronym, b, blockquote, code, em, i, li, ol, strong, ul, pre, h1, h2, h3, h4, h5, h6, p, img]
   allowed_attributes:
-    a:
-      - href
-      - title
-    img:
-      - src
-      - alt
-    code:
-      - class
-    pre:
-      - class
+    a: [href, title]
+    img: [src, alt]
+    code: [class]
+    pre: [class]
 
 
